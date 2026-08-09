@@ -1,7 +1,56 @@
 @import "tailwindcss";
 
+:root {
+  --eic-navy-dark: #060b18;
+  --eic-navy-card: #0b132b;
+  --eic-emerald: #10b981;
+  --eic-emerald-dark: #1e4635;
+  --eic-gold: #f49f1c;
+  --eic-gold-glow: #fce484;
+}
+
 body {
   margin: 0;
-  background: #020617;
-  font-family: Inter, sans-serif;
+  background: #060b18;
+  color: #f8fafc;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-x: hidden;
 }
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0b132b;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e4635;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #10b981;
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(244, 159, 28, 0.3), 0 0 30px rgba(16, 185, 129, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(244, 159, 28, 0.6), 0 0 50px rgba(16, 185, 129, 0.4);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2.5s infinite ease-in-out;
+}
+
+@keyframes floatMic {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-float {
+  animation: floatMic 3s infinite ease-in-out;
+}
