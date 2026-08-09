@@ -1103,6 +1103,16 @@ export default function PitchKiosk() {
           )}
         </div>
       )}
+
+      {/* Kiosk Footer Attribution */}
+      <footer className="mt-16 text-center text-xs text-slate-400 pt-8 border-t border-slate-800/60 max-w-7xl mx-auto px-4 space-y-1">
+        <p className="font-semibold text-slate-300">
+          Created & Built by <span className="text-emerald-400 font-extrabold">Chirag Dhama</span> • SID: <span className="text-[#f49f1c] font-extrabold">25103027</span>
+        </p>
+        <p className="text-slate-500 text-[11px]">Entrepreneurship & Incubation Cell (EIC) • PEC Chandigarh</p>
+      </footer>
     </div>
   );
 }
+
+

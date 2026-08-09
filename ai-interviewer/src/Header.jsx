@@ -10,12 +10,17 @@ const Header = ({ session, loading }) => {
   return (
     <div className="w-full font-sans select-none border-b border-[#1e4635]/60 bg-[#060b18]">
       {/* 1. Top EIC Announcement Bar */}
-      <div className="bg-gradient-to-r from-[#163b2c] via-[#060b18] to-[#1e4635] py-2 px-4 border-b border-[#10b981]/30 text-center text-xs font-semibold text-emerald-300 flex items-center justify-center space-x-2">
+      <div className="bg-gradient-to-r from-[#163b2c] via-[#060b18] to-[#1e4635] py-2 px-4 border-b border-[#10b981]/30 text-center text-xs font-semibold text-emerald-300 flex flex-wrap items-center justify-center gap-2">
         <span className="flex items-center gap-1 bg-[#f49f1c]/20 text-[#f49f1c] px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-[#f49f1c]/40">
           <Flame size={12} className="animate-pulse" /> E-Summit Active
         </span>
-        <span>Entrepreneurship & Incubation Cell (EIC) PEC Chandigarh — AI Pitch Practice Kiosk Enabled</span>
+        <span>Entrepreneurship & Incubation Cell (EIC) PEC Chandigarh</span>
+        <span className="hidden sm:inline text-[#10b981]/50">•</span>
+        <span className="text-slate-300 text-[11px]">
+          Created by <strong className="text-emerald-400 font-bold">Chirag Dhama</strong> (SID: <strong className="text-[#f49f1c] font-bold">25103027</strong>)
+        </span>
       </div>
+
 
       {/* 2. Main Navigation Header */}
       <header className="max-w-7xl mx-auto h-auto py-3 px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
