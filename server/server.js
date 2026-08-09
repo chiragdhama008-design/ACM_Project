@@ -82,9 +82,15 @@ app.post("/api/transcribe", async (req, res) => {
         const Groq = GroqModule.default || GroqModule.Groq;
         const toFile = GroqModule.toFile;
         const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-        const cleanMime = mimeType.split(";")[0];
-        const ext = cleanMime.includes("mp4") ? "mp4" : cleanMime.includes("ogg") ? "ogg" : "webm";
-        const file = await toFile(buffer, `speech.${ext}`, { type: cleanMime });
+        const cleanMime = mimeType.split(";")[0].toLowerCase();
+        let ext = "webm";
+        if (cleanMime.includes("mp4") || cleanMime.includes("m4a")) ext = "mp4";
+        else if (cleanMime.includes("aac")) ext = "aac";
+        else if (cleanMime.includes("wav")) ext = "wav";
+        else if (cleanMime.includes("ogg")) ext = "ogg";
+
+        const file = await toFile(buffer, `speech.${ext}`, { type: cleanMime || "audio/webm" });
+
         const transcription = await groq.audio.transcriptions.create({
           file: file,
           model: "whisper-large-v3-turbo",

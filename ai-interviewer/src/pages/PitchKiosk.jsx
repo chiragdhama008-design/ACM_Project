@@ -51,6 +51,7 @@ export default function PitchKiosk() {
   const [qaAnswers, setQaAnswers] = useState({});
   const [qaFeedback, setQaFeedback] = useState({});
   const [isEvaluatingQA, setIsEvaluatingQA] = useState(false);
+  const [browserNotice, setBrowserNotice] = useState("");
 
   // Audio / Media Recording & Speech Recognition Refs
   const mediaRecorderRef = useRef(null);
@@ -59,6 +60,7 @@ export default function PitchKiosk() {
   const recognitionRef = useRef(null);
   const recordingActiveRef = useRef(false);
   const liveTranscriptRef = useRef("");
+  const recordedMimeTypeRef = useRef("");
 
   useEffect(() => {
     setTimeLeft(duration);
@@ -78,7 +80,26 @@ export default function PitchKiosk() {
     };
   }, []);
 
-  // Web SpeechRecognition Initialization — Multi-Accent Sensitivity & No Auto-Correct
+  // Cross-browser supported MIME type detection (Safari iOS, Brave, Chrome, Firefox, Edge)
+  const getSupportedMimeType = () => {
+    if (typeof MediaRecorder === "undefined" || !MediaRecorder.isTypeSupported) {
+      return "";
+    }
+    const types = [
+      "audio/webm;codecs=opus",
+      "audio/webm",
+      "audio/mp4",
+      "audio/aac",
+      "audio/ogg;codecs=opus",
+      "audio/wav"
+    ];
+    for (const t of types) {
+      if (MediaRecorder.isTypeSupported(t)) return t;
+    }
+    return "";
+  };
+
+  // Web SpeechRecognition Initialization — Multi-Accent & Cross-Browser Safe
   const startSpeechRecognition = () => {
     try {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -109,16 +130,20 @@ export default function PitchKiosk() {
 
         recognition.onerror = (err) => {
           console.warn("SpeechRecognition notice:", err.error);
-          if (recordingActiveRef.current && err.error !== "aborted") {
+          if (err.error === "service-not-allowed" || err.error === "not-allowed") {
+            setBrowserNotice("Browser STT disabled. Using server-side AI audio transcription mode.");
+          } else if (recordingActiveRef.current && err.error !== "aborted") {
             try { recognition.start(); } catch (e) {}
           }
         };
 
         recognition.start();
         recognitionRef.current = recognition;
+      } else {
+        setBrowserNotice("Server AI Audio Transcription Active (Brave / Safari / Firefox Mode)");
       }
     } catch (e) {
-      console.warn("SpeechRecognition API unavailable in browser, fallback to server audio blobs.");
+      setBrowserNotice("Server AI Audio Transcription Active");
     }
   };
 
@@ -127,6 +152,7 @@ export default function PitchKiosk() {
     recordingActiveRef.current = true;
     liveTranscriptRef.current = "";
     setTranscript("");
+    setBrowserNotice("");
     setScorecard(null);
     setSavedToSupabase(false);
     audioChunksRef.current = [];
@@ -139,7 +165,12 @@ export default function PitchKiosk() {
           autoGainControl: true
         }
       });
-      const mediaRecorder = new MediaRecorder(stream);
+
+      const mimeType = getSupportedMimeType();
+      recordedMimeTypeRef.current = mimeType;
+      const recorderOptions = mimeType ? { mimeType } : undefined;
+
+      const mediaRecorder = new MediaRecorder(stream, recorderOptions);
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (event) => {
@@ -168,7 +199,7 @@ export default function PitchKiosk() {
       }, 1000);
     } catch (err) {
       console.error("Microphone access failed:", err);
-      alert("Microphone access is required to record your elevator pitch. You can also paste your pitch text manually.");
+      alert("Microphone access is required to record your elevator pitch. Please grant microphone permission or paste your pitch text.");
       setIsRecording(false);
       recordingActiveRef.current = false;
     }
@@ -221,10 +252,11 @@ export default function PitchKiosk() {
     setTimeout(async () => {
       let finalPitchContent = (liveTranscriptRef.current || transcript).trim();
 
-      // If live transcript is empty or too short, fallback to server transcription
-      if (finalPitchContent.length < 10 && audioChunksRef.current.length > 0) {
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-        if (audioBlob.size > 2000) {
+      // If live transcript is empty/short, or on Safari/Brave/Firefox, use server-side transcription
+      if ((finalPitchContent.length < 10 || browserNotice) && audioChunksRef.current.length > 0) {
+        const mimeType = recordedMimeTypeRef.current || "audio/webm";
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        if (audioBlob.size > 1000) {
           try {
             const reader = new FileReader();
             reader.readAsDataURL(audioBlob);
@@ -236,7 +268,7 @@ export default function PitchKiosk() {
                 body: JSON.stringify({ audio: base64Audio })
               });
               const data = await response.json();
-              if (data.text && data.text.length > 10) {
+              if (data.text && data.text.length > 5) {
                 finalPitchContent = data.text;
                 setTranscript(data.text);
               }
@@ -252,6 +284,7 @@ export default function PitchKiosk() {
       processAIEvaluation(finalPitchContent);
     }, 500);
   };
+
 
 
   // Submit Text Pitch directly
@@ -644,22 +677,30 @@ export default function PitchKiosk() {
 
                   {/* Real-time Live Speech Transcription Container — Verbatim Capture */}
                   <div className="mt-6 border-t border-slate-800/80 pt-6">
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                       <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
                         <Volume2 size={16} className="text-[#10b981]" /> Verbatim Spoken Transcript (No Auto-Correct)
                       </span>
-                      {isRecording ? (
-                        <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-[#f49f1c] bg-[#f49f1c]/10 border border-[#f49f1c]/30 px-2.5 py-0.5 rounded-full">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#f49f1c] animate-ping"></span> High-Sensitivity Mic Active
-                        </span>
-                      ) : (
-                        transcript && (
-                          <span className="text-[10px] text-emerald-400 font-bold bg-[#163b2c] border border-[#10b981]/30 px-2 py-0.5 rounded-full">
-                            Verbatim Spoken Text Captured
+                      <div className="flex items-center gap-2">
+                        {browserNotice && (
+                          <span className="text-[10px] text-amber-300 font-semibold bg-amber-950/60 border border-amber-500/30 px-2.5 py-0.5 rounded-full">
+                            {browserNotice}
                           </span>
-                        )
-                      )}
+                        )}
+                        {isRecording ? (
+                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-[#f49f1c] bg-[#f49f1c]/10 border border-[#f49f1c]/30 px-2.5 py-0.5 rounded-full">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#f49f1c] animate-ping"></span> High-Sensitivity Mic Active
+                          </span>
+                        ) : (
+                          transcript && (
+                            <span className="text-[10px] text-emerald-400 font-bold bg-[#163b2c] border border-[#10b981]/30 px-2 py-0.5 rounded-full">
+                              Verbatim Spoken Text Captured
+                            </span>
+                          )
+                        )}
+                      </div>
                     </div>
+
 
                     {isRecording ? (
                       <div className="min-h-[120px] max-h-[180px] overflow-y-auto bg-[#060b18] border border-[#10b981]/40 rounded-2xl p-4 text-slate-200 text-sm leading-relaxed italic">
