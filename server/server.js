@@ -88,9 +88,8 @@ app.post("/api/transcribe", async (req, res) => {
         const transcription = await groq.audio.transcriptions.create({
           file: file,
           model: "whisper-large-v3-turbo",
-          language: "en",
           temperature: 0.0,
-          prompt: "Candidate interview response."
+          prompt: "Verbatim speech transcription. Transcribe exact spoken words."
         });
         if (transcription && transcription.text) {
           const sanitizedText = cleanWhisperHallucinations(transcription.text);
@@ -119,14 +118,16 @@ app.post("/api/transcribe", async (req, res) => {
                 }
               },
               {
-                text: `You are a speech-to-text system. Transcribe the spoken audio EXACTLY as spoken verbatim.
+                text: `You are a verbatim speech-to-text transcriber. Transcribe the spoken audio EXACTLY word-for-word as spoken.
+Do NOT auto-correct, rephrase, fix grammar, or alter accent pronunciations or slang.
 If the audio contains no clear human speech, reply with NOTHING.
-Reply with ONLY the raw transcript text, no instructions or meta comments.`
+Reply with ONLY the exact verbatim transcript text.`
               }
             ]
           }
         ]
       });
+
       const text = response.text ? cleanWhisperHallucinations(response.text) : "";
       return res.json({ text });
     } catch (geminiErr) {

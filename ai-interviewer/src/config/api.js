@@ -7,4 +7,5 @@
 //   automatically go to the same server, no domain needed.
 export const API_URL =
   import.meta.env.VITE_API_URL ||
-  (import.meta.env.DEV ? "http://localhost:5000/api" : "/api");
+  (import.meta.env.DEV ? "http://localhost:5000" : "");
+

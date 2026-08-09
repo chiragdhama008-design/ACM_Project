@@ -2,8 +2,9 @@ import ai from "../config/gemini.js";
 import Groq from "groq-sdk";
 import { Mistral } from "@mistralai/mistralai";
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-const mistral = new Mistral({ apiKey: process.env.MISTRAL_API_KEY });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "gsk_placeholder_key" });
+const mistral = new Mistral({ apiKey: process.env.MISTRAL_API_KEY || "mistral_placeholder_key" });
+
 
 function stripFences(rawText) {
   return rawText.replace(/```json/gi, "").replace(/```/g, "").trim();

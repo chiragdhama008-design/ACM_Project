@@ -47,15 +47,18 @@ export default function PitchKiosk() {
 
   // Interactive Investor Q&A State (2 Questions)
   const [activeQAIndex, setActiveQAIndex] = useState(null);
+  const [selectedLang, setSelectedLang] = useState("en-IN");
   const [qaAnswers, setQaAnswers] = useState({});
   const [qaFeedback, setQaFeedback] = useState({});
   const [isEvaluatingQA, setIsEvaluatingQA] = useState(false);
 
-  // Audio / Media Recording Refs
+  // Audio / Media Recording & Speech Recognition Refs
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const timerRef = useRef(null);
   const recognitionRef = useRef(null);
+  const recordingActiveRef = useRef(false);
+  const liveTranscriptRef = useRef("");
 
   useEffect(() => {
     setTimeLeft(duration);
@@ -64,6 +67,7 @@ export default function PitchKiosk() {
   // Clean up timer & recording on unmount
   useEffect(() => {
     return () => {
+      recordingActiveRef.current = false;
       if (timerRef.current) clearInterval(timerRef.current);
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
         mediaRecorderRef.current.stop();
@@ -74,7 +78,7 @@ export default function PitchKiosk() {
     };
   }, []);
 
-  // Web SpeechRecognition Initialization for Live Feedback
+  // Web SpeechRecognition Initialization — Multi-Accent Sensitivity & No Auto-Correct
   const startSpeechRecognition = () => {
     try {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -82,37 +86,59 @@ export default function PitchKiosk() {
         const recognition = new SpeechRecognition();
         recognition.continuous = true;
         recognition.interimResults = true;
-        recognition.lang = "en-US";
+        recognition.maxAlternatives = 1;
+        recognition.lang = selectedLang || navigator.language || "en-IN";
 
         recognition.onresult = (event) => {
           let currentTranscript = "";
           for (let i = 0; i < event.results.length; i++) {
             currentTranscript += event.results[i][0].transcript + " ";
           }
+          liveTranscriptRef.current = currentTranscript;
           setTranscript(currentTranscript);
         };
 
+        recognition.onend = () => {
+          // Keep-alive loop while recording is active to prevent dropped mic input
+          if (recordingActiveRef.current) {
+            try {
+              recognition.start();
+            } catch (e) {}
+          }
+        };
+
         recognition.onerror = (err) => {
-          console.warn("SpeechRecognition fallback notice:", err.error);
+          console.warn("SpeechRecognition notice:", err.error);
+          if (recordingActiveRef.current && err.error !== "aborted") {
+            try { recognition.start(); } catch (e) {}
+          }
         };
 
         recognition.start();
         recognitionRef.current = recognition;
       }
     } catch (e) {
-      console.warn("SpeechRecognition API unavailable in browser, fallback to server Whisper audio blobs.");
+      console.warn("SpeechRecognition API unavailable in browser, fallback to server audio blobs.");
     }
   };
 
   // Start Mic Pitch Recording
   const startPitch = async () => {
+    recordingActiveRef.current = true;
+    liveTranscriptRef.current = "";
     setTranscript("");
     setScorecard(null);
     setSavedToSupabase(false);
     audioChunksRef.current = [];
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
 
@@ -144,6 +170,7 @@ export default function PitchKiosk() {
       console.error("Microphone access failed:", err);
       alert("Microphone access is required to record your elevator pitch. You can also paste your pitch text manually.");
       setIsRecording(false);
+      recordingActiveRef.current = false;
     }
   };
 
@@ -151,6 +178,7 @@ export default function PitchKiosk() {
   const togglePause = () => {
     if (!mediaRecorderRef.current) return;
     if (isPaused) {
+      recordingActiveRef.current = true;
       mediaRecorderRef.current.resume();
       if (recognitionRef.current) try { recognitionRef.current.start(); } catch (e) {}
       timerRef.current = setInterval(() => {
@@ -165,6 +193,7 @@ export default function PitchKiosk() {
       }, 1000);
       setIsPaused(false);
     } else {
+      recordingActiveRef.current = false;
       mediaRecorderRef.current.pause();
       if (recognitionRef.current) try { recognitionRef.current.stop(); } catch (e) {}
       if (timerRef.current) clearInterval(timerRef.current);
@@ -174,6 +203,7 @@ export default function PitchKiosk() {
 
   // Stop Pitch Recording & Process Audio
   const stopPitch = async () => {
+    recordingActiveRef.current = false;
     if (timerRef.current) clearInterval(timerRef.current);
     setIsRecording(false);
     setIsPaused(false);
@@ -187,11 +217,12 @@ export default function PitchKiosk() {
       mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
     }
 
-    // Combine audio chunks into blob
+    // Combine audio chunks into blob & process pitch
     setTimeout(async () => {
-      let finalPitchContent = transcript.trim();
+      let finalPitchContent = (liveTranscriptRef.current || transcript).trim();
 
-      if (audioChunksRef.current.length > 0) {
+      // If live transcript is empty or too short, fallback to server transcription
+      if (finalPitchContent.length < 10 && audioChunksRef.current.length > 0) {
         const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
         if (audioBlob.size > 2000) {
           try {
@@ -221,6 +252,7 @@ export default function PitchKiosk() {
       processAIEvaluation(finalPitchContent);
     }, 500);
   };
+
 
   // Submit Text Pitch directly
   const handleManualSubmit = (e) => {
@@ -494,6 +526,23 @@ export default function PitchKiosk() {
                 </div>
               </div>
 
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-300 block mb-2">
+                  Speech Recognition Accent Sensitivity
+                </label>
+                <select
+                  value={selectedLang}
+                  onChange={(e) => setSelectedLang(e.target.value)}
+                  className="w-full px-4 py-3 bg-[#060b18] border border-slate-800 focus:border-[#10b981] rounded-xl text-sm outline-none text-white transition"
+                >
+                  <option value="en-IN">🇮🇳 English (India & South Asia) — High Accent Sensitivity</option>
+                  <option value="en-US">🇺🇸 English (US & North America)</option>
+                  <option value="en-GB">🇬🇧 English (UK & International)</option>
+                  <option value="en-AU">🇦🇺 English (Australia & Oceania)</option>
+                </select>
+              </div>
+
+
               <button
                 type="submit"
                 className="w-full flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-[#10b981] to-[#059669] hover:opacity-95 font-bold rounded-xl shadow-xl transition cursor-pointer text-white text-sm"
@@ -593,29 +642,58 @@ export default function PitchKiosk() {
                     </div>
                   </div>
 
-                  {/* Real-time Live Speech Transcription Container */}
+                  {/* Real-time Live Speech Transcription Container — Verbatim Capture */}
                   <div className="mt-6 border-t border-slate-800/80 pt-6">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                        <Volume2 size={16} className="text-[#10b981]" /> Live Speech Transcription Feed
+                        <Volume2 size={16} className="text-[#10b981]" /> Verbatim Spoken Transcript (No Auto-Correct)
                       </span>
-                      {isRecording && (
+                      {isRecording ? (
                         <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-[#f49f1c] bg-[#f49f1c]/10 border border-[#f49f1c]/30 px-2.5 py-0.5 rounded-full">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#f49f1c] animate-ping"></span> Live Capturing
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#f49f1c] animate-ping"></span> High-Sensitivity Mic Active
                         </span>
+                      ) : (
+                        transcript && (
+                          <span className="text-[10px] text-emerald-400 font-bold bg-[#163b2c] border border-[#10b981]/30 px-2 py-0.5 rounded-full">
+                            Verbatim Spoken Text Captured
+                          </span>
+                        )
                       )}
                     </div>
 
-                    <div className="min-h-[120px] max-h-[180px] overflow-y-auto bg-[#060b18] border border-slate-800 rounded-2xl p-4 text-slate-300 text-sm leading-relaxed italic">
-                      {transcript ? (
-                        transcript
-                      ) : (
-                        <span className="text-slate-600 not-italic">
-                          Click "Start {duration}-Sec Pitch" above and speak into your mic. Your spoken elevator pitch will transcribe here in real time.
-                        </span>
-                      )}
-                    </div>
+                    {isRecording ? (
+                      <div className="min-h-[120px] max-h-[180px] overflow-y-auto bg-[#060b18] border border-[#10b981]/40 rounded-2xl p-4 text-slate-200 text-sm leading-relaxed italic">
+                        {transcript || (
+                          <span className="text-slate-500 not-italic">
+                            Listening to your speech... Speak into the microphone.
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <textarea
+                          rows={4}
+                          value={transcript}
+                          onChange={(e) => {
+                            setTranscript(e.target.value);
+                            liveTranscriptRef.current = e.target.value;
+                          }}
+                          placeholder={`Click "Start ${duration}-Sec Pitch" above and speak into your mic. Your exact spoken pitch will appear here.`}
+                          className="w-full p-4 bg-[#060b18] border border-slate-800 focus:border-[#10b981] rounded-2xl text-sm outline-none text-slate-200 transition leading-relaxed"
+                        />
+                        {transcript.trim().length > 5 && (
+                          <button
+                            onClick={() => processAIEvaluation(transcript.trim())}
+                            disabled={isProcessingAI}
+                            className="px-6 py-2.5 bg-[#163b2c] border border-[#10b981]/40 text-emerald-300 font-bold rounded-xl hover:bg-[#10b981] hover:text-slate-950 transition cursor-pointer text-xs flex items-center gap-2"
+                          >
+                            <Sparkles size={14} /> Evaluate Recorded Pitch with AI
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
+
 
                   {/* Manual Text Pitch Fallback option */}
                   <div className="mt-6 border-t border-slate-800/80 pt-6">

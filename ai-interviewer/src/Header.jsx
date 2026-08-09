@@ -47,9 +47,20 @@ const Header = ({ session, loading }) => {
         {/* Navigation Tabs */}
         <div className="hidden md:flex items-center space-x-2 bg-[#0b132b] p-1.5 rounded-2xl border border-slate-800">
           <Link
+            to="/"
+            className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              location.pathname === "/"
+                ? "bg-gradient-to-r from-[#f49f1c] to-[#d97706] text-white shadow-md shadow-amber-950/50"
+                : "text-slate-400 hover:text-white hover:bg-slate-900"
+            }`}
+          >
+            <Sparkles size={15} />
+            <span>Welcome</span>
+          </Link>
+          <Link
             to="/kiosk"
             className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              isKioskPath
+              location.pathname === "/kiosk" || location.pathname === "/dashboard"
                 ? "bg-gradient-to-r from-[#10b981] to-[#059669] text-white shadow-md shadow-emerald-950/50"
                 : "text-slate-400 hover:text-white hover:bg-slate-900"
             }`}
@@ -57,18 +68,8 @@ const Header = ({ session, loading }) => {
             <Mic size={15} />
             <span>2-Min AI Pitch Kiosk</span>
           </Link>
-          <Link
-            to="/onboarding"
-            className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              !isKioskPath
-                ? "bg-gradient-to-r from-[#f49f1c] to-[#d97706] text-white shadow-md shadow-amber-950/50"
-                : "text-slate-400 hover:text-white hover:bg-slate-900"
-            }`}
-          >
-            <ShieldCheck size={15} />
-            <span>Screening Portal</span>
-          </Link>
         </div>
+
 
         {/* Action / Badge */}
         <div className="flex items-center space-x-3">
