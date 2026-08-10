@@ -16,9 +16,7 @@ const Header = ({ session, loading }) => {
         </span>
         <span>Entrepreneurship & Incubation Cell (EIC) PEC Chandigarh</span>
         <span className="hidden sm:inline text-[#10b981]/50">•</span>
-        <span className="text-slate-300 text-[11px]">
-          Created by <strong className="text-emerald-400 font-bold">Chirag Dhama</strong> (SID: <strong className="text-[#f49f1c] font-bold">25103027</strong>)
-        </span>
+
       </div>
 
 
