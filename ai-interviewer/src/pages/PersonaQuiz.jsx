@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import CyberParticles from "../components/CyberParticles";
 import AcmLogo from "../components/AcmLogo";
 import { calculatePersona } from "../utils/personaEngine";
+import { generateRandomScenarios } from "../utils/scenarioEngine";
 import { triggerConfetti, downloadCardAsImage } from "../utils/canvasHelper";
 import { audioEngine } from "../utils/audioSynth";
 import { supabase } from "../supabaseClient";
@@ -12,23 +13,23 @@ import {
   Keyboard,
   Sparkles,
   Zap,
-  DoorClosed,
+  Clock,
   Bot,
   ArrowRight,
   RefreshCw,
   Download,
   Share2,
   CheckCircle2,
-  Trophy,
   Sliders,
-  Volume2,
   Code,
   Brain,
   Terminal,
   User,
   GraduationCap,
   Copy,
-  Check
+  Check,
+  Building2,
+  Bus
 } from "lucide-react";
 
 export default function PersonaQuiz() {
@@ -38,6 +39,10 @@ export default function PersonaQuiz() {
   // User Profile
   const [name, setName] = useState("");
   const [branch, setBranch] = useState("Computer Science & Engg (CSE)");
+  const [studentType, setStudentType] = useState("Day Scholar"); // Day Scholar vs Hosteller option!
+
+  // Dynamic AI Generated Scenarios
+  const [scenarios, setScenarios] = useState({ q1: "", q2: "" });
 
   // Answers
   const [answer1, setAnswer1] = useState("");
@@ -48,13 +53,12 @@ export default function PersonaQuiz() {
 
   // Mic & Audio State
   const [isListening, setIsListening] = useState(false);
-  const [sensitivityGain, setSensitivityGain] = useState(5.0); // Ultra high default!
+  const [sensitivityGain, setSensitivityGain] = useState(6.0); // Maximum raw sensitivity
   const [audioLevel, setAudioLevel] = useState(0);
 
   // Results
   const [personaResult, setPersonaResult] = useState(null);
   const [copiedLink, setCopiedLink] = useState(false);
-  const [isSavingDb, setIsSavingDb] = useState(false);
 
   // References for Web Speech & Web Audio
   const recognitionRef = useRef(null);
@@ -76,20 +80,22 @@ export default function PersonaQuiz() {
     "Production & Industrial (PE)",
   ];
 
-  // Questions Config
-  const currentQuestionText =
-    step === "q1"
-      ? "You have 10 minutes before a 75% attendance lecture and your hostel door lock is jammed. What's your move?"
-      : "If you could build a robot to solve ONE annoying problem in PEC hostels or mess food, what would it do?";
+  // Generate dynamic scenarios on mount or retake
+  useEffect(() => {
+    const generated = generateRandomScenarios();
+    setScenarios(generated);
+  }, []);
+
+  const currentQuestionText = step === "q1" ? scenarios.q1 : scenarios.q2;
 
   // Speak AI Question whenever step changes
   useEffect(() => {
-    if (step === "q1" || step === "q2") {
+    if ((step === "q1" || step === "q2") && currentQuestionText) {
       audioEngine.speakQuestion(currentQuestionText);
     } else {
       audioEngine.stopSpeaking();
     }
-  }, [step]);
+  }, [step, scenarios]);
 
   // Clean up audio on unmount
   useEffect(() => {
@@ -99,14 +105,14 @@ export default function PersonaQuiz() {
     };
   }, []);
 
-  // Initialize Mic & Audio Amplification
+  // Initialize Mic & Audio Amplification with RAW AUDIO (NO NOISE SUPPRESSION / NO AUTOCORRECT)
   const startMic = async () => {
     audioEngine.playMicStart();
     setIsListening(true);
 
     const currentAnswerSetter = step === "q1" ? setAnswer1 : setAnswer2;
 
-    // 1. Web Speech API setup
+    // 1. Web Speech API setup with verbatim verbatim capture (no autocorrect)
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       try {
@@ -121,7 +127,7 @@ export default function PersonaQuiz() {
             transcript += event.results[i][0].transcript;
           }
           currentAnswerSetter((prev) => {
-            // Append or update transcript cleanly
+            // Keep exact spoken words verbatim
             return transcript;
           });
         };
@@ -146,9 +152,17 @@ export default function PersonaQuiz() {
       setInputMode("type");
     }
 
-    // 2. Web Audio API High-Sensitivity Gain Amplifier & Waveform Visualizer
+    // 2. RAW Audio Stream: NO Noise Suppression, NO Echo Cancellation, NO Auto Gain
+    // This allows maximum raw mic sensitivity to pick up every whisper/spoken word!
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        },
+        video: false,
+      });
       micStreamRef.current = stream;
 
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -157,7 +171,7 @@ export default function PersonaQuiz() {
 
       const source = ctx.createMediaStreamSource(stream);
       const gainNode = ctx.createGain();
-      gainNode.gain.value = sensitivityGain; // Ultra High multiplier!
+      gainNode.gain.value = sensitivityGain; // High sensitivity multiplier
 
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 64;
@@ -239,11 +253,10 @@ export default function PersonaQuiz() {
         alert("Please speak or type your answer for Scenario 2!");
         return;
       }
-      // Run AI evaluation
       setStep("analyzing");
 
       setTimeout(() => {
-        const res = calculatePersona({ name, branch, answer1, answer2 });
+        const res = calculatePersona({ name, branch: `${branch} (${studentType})`, answer1, answer2 });
         setPersonaResult(res);
         setStep("result");
         triggerConfetti();
@@ -255,8 +268,6 @@ export default function PersonaQuiz() {
 
   // Save Response to Supabase or LocalStorage
   const saveResponseToDatabase = async (res) => {
-    setIsSavingDb(true);
-
     const payload = {
       name: res.name,
       branch: res.branch,
@@ -270,62 +281,57 @@ export default function PersonaQuiz() {
       created_at: new Date().toISOString()
     };
 
-    // Save to LocalStorage for fallback
     try {
       const existing = JSON.parse(localStorage.getItem("PEC_ACM_SUBMISSIONS") || "[]");
       existing.unshift(payload);
       localStorage.setItem("PEC_ACM_SUBMISSIONS", JSON.stringify(existing));
     } catch (e) {}
 
-    // Save to Supabase if configured
     try {
-      const { error } = await supabase.from("pec_acm_responses").insert([payload]);
-      if (error) {
-        console.warn("Supabase insert notice (will fallback to localStorage):", error.message);
-      }
-    } catch (err) {
-      console.warn("Supabase connection fallback:", err);
-    } finally {
-      setIsSavingDb(false);
-    }
+      await supabase.from("pec_acm_responses").insert([payload]);
+    } catch (err) {}
   };
 
-  // Preset suggestion pills for quick answers
-  const q1Pills = [
-    "Jump balcony with bedsheets",
-    "Pick door lock with hairpin",
-    "Call roomie to break door from outside",
-    "Email professor saying lock jammed",
-    "Brute force kick door open"
-  ];
-
-  const q2Pills = [
-    "Scan Mess Paneer quality before eating",
-    "Automatic room cleaning & laundry bot",
-    "Proxy attendance robot for 8 AM classes",
-    "Hostel water heater auto-fixer",
-    "Hostel Wi-Fi signal booster bot"
-  ];
+  // Dynamic Suggestion Pills based on scenario
+  const getPills = (questionText) => {
+    const qLower = (questionText || "").toLowerCase();
+    if (qLower.includes("ctu") || qLower.includes("traffic") || qLower.includes("door") || qLower.includes("lock") || qLower.includes("scooter")) {
+      return [
+        "Take electric auto shortcut through Sector 11",
+        "Jump balcony or pick lock with hairpin",
+        "Email professor saying stuck in traffic",
+        "Run 2 km sprint to L-Block hall",
+        "Offer CTU bus driver extra samosa"
+      ];
+    }
+    return [
+      "Scan mess food quality using AI computer vision",
+      "Automate CTU bus seat finder app",
+      "Proxy attendance robot for 8 AM classes",
+      "Library seat reserved scanner bot",
+      "Hostel Wi-Fi auto booster gadget"
+    ];
+  };
 
   return (
-    <div className="relative min-h-screen bg-[#030712] text-white font-sans overflow-hidden py-10 px-4 sm:px-6 lg:px-8 selection:bg-[#0075FF] selection:text-white">
+    <div className="relative min-h-screen bg-[#020612] text-white font-sans overflow-hidden py-10 px-4 sm:px-6 lg:px-8 selection:bg-[#0075FF] selection:text-white">
       <CyberParticles />
 
       <div className="relative z-10 max-w-4xl mx-auto">
         
         {/* STEP 1: USER PROFILE ENTRY */}
         {step === "profile" && (
-          <div className="bg-[#08122c]/90 border border-blue-500/40 rounded-3xl p-6 sm:p-10 shadow-2xl backdrop-blur-xl animate-fade-in text-left">
-            <div className="flex items-center gap-3 mb-6">
+          <div className="bg-[#050c21]/95 border border-blue-500/40 rounded-3xl p-6 sm:p-10 shadow-2xl backdrop-blur-xl animate-fade-in text-left">
+            <div className="flex items-center gap-3.5 mb-6">
               <AcmLogo size="md" showText={false} />
               <div>
-                <span className="text-xs font-black uppercase text-cyan-400 tracking-wider">Step 1 of 3</span>
-                <h2 className="text-2xl sm:text-3xl font-black text-white">Enter Your PEC Details</h2>
+                <span className="text-xs font-black uppercase text-cyan-400 tracking-widest">PEC Chandigarh AI Persona Engine</span>
+                <h2 className="text-2xl sm:text-3xl font-black text-white">Enter Your Student Details</h2>
               </div>
             </div>
 
             <p className="text-xs sm:text-sm text-blue-200/80 mb-8">
-              No signup or password required! Just give us your name and branch to unlock your personalized PEC Tech Persona Card & ACM Wing Recommendation.
+              No signup or login required! Whether you are a <strong className="text-cyan-300">Day Scholar</strong> or <strong className="text-purple-300">Hosteller</strong>, enter your details to generate your shareable PEC Tech Persona Card & ACM Wing Recommendation.
             </p>
 
             <div className="space-y-6 mb-8">
@@ -339,75 +345,92 @@ export default function PersonaQuiz() {
                   placeholder="e.g. Aarav Sharma"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-3.5 bg-[#050a18] border border-blue-700/60 focus:border-cyan-400 rounded-2xl text-sm text-white placeholder-slate-500 focus:outline-none transition shadow-inner font-semibold"
+                  className="w-full px-4 py-3.5 bg-[#030818] border border-blue-700/60 focus:border-cyan-400 rounded-2xl text-sm text-white placeholder-slate-500 focus:outline-none transition font-semibold"
                 />
               </div>
 
               {/* Branch Select */}
-              <div>
-                <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-300 mb-2 flex items-center gap-2">
-                  <GraduationCap size={16} className="text-purple-400" /> Engineering Branch (PEC)
-                </label>
-                <select
-                  value={branch}
-                  onChange={(e) => setBranch(e.target.value)}
-                  className="w-full px-4 py-3.5 bg-[#050a18] border border-blue-700/60 focus:border-cyan-400 rounded-2xl text-sm text-white focus:outline-none transition shadow-inner font-semibold"
-                >
-                  {branches.map((b) => (
-                    <option key={b} value={b} className="bg-[#08122c] text-white">
-                      {b}
-                    </option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-300 mb-2 flex items-center gap-2">
+                    <GraduationCap size={16} className="text-purple-400" /> Engineering Branch (PEC)
+                  </label>
+                  <select
+                    value={branch}
+                    onChange={(e) => setBranch(e.target.value)}
+                    className="w-full px-4 py-3.5 bg-[#030818] border border-blue-700/60 focus:border-cyan-400 rounded-2xl text-sm text-white focus:outline-none transition font-semibold"
+                  >
+                    {branches.map((b) => (
+                      <option key={b} value={b} className="bg-[#050c21] text-white">
+                        {b}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Day Scholar vs Hosteller Switch */}
+                <div>
+                  <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-300 mb-2 flex items-center gap-2">
+                    <Building2 size={16} className="text-cyan-400" /> Campus Status
+                  </label>
+                  <select
+                    value={studentType}
+                    onChange={(e) => setStudentType(e.target.value)}
+                    className="w-full px-4 py-3.5 bg-[#030818] border border-blue-700/60 focus:border-cyan-400 rounded-2xl text-sm text-white focus:outline-none transition font-semibold"
+                  >
+                    <option value="Day Scholar" className="bg-[#050c21]">🚌 Day Scholar</option>
+                    <option value="Hosteller" className="bg-[#050c21]">🏢 Hosteller</option>
+                  </select>
+                </div>
               </div>
             </div>
 
             <button
               onClick={handleNextStep}
-              className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#0075FF] via-[#00F0FF] to-[#7000FF] hover:scale-[1.02] text-slate-950 font-black text-base flex items-center justify-center gap-3 shadow-xl shadow-blue-500/30 transition cursor-pointer"
+              className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#0075FF] via-[#00F0FF] to-[#7000FF] hover:scale-[1.01] text-slate-950 font-black text-base flex items-center justify-center gap-3 shadow-xl shadow-blue-500/30 transition cursor-pointer"
             >
-              <span>Begin Persona Quiz</span>
+              <span>Generate AI Scenarios & Start</span>
               <ArrowRight size={20} />
             </button>
           </div>
         )}
 
-        {/* STEP 2 & 3: SCENARIO QUESTION 1 & 2 */}
+        {/* STEP 2 & 3: DYNAMIC AI GENERATED SCENARIO QUESTIONS */}
         {(step === "q1" || step === "q2") && (
-          <div className="bg-[#08122c]/95 border border-blue-500/40 rounded-3xl p-6 sm:p-10 shadow-2xl backdrop-blur-xl animate-fade-in text-left">
+          <div className="bg-[#050c21]/95 border border-blue-500/40 rounded-3xl p-6 sm:p-10 shadow-2xl backdrop-blur-xl animate-fade-in text-left">
             
             {/* Header progress */}
             <div className="flex items-center justify-between border-b border-blue-900/60 pb-4 mb-6">
               <div className="flex items-center gap-3">
                 <div className={`p-2.5 rounded-2xl border ${step === "q1" ? "bg-blue-600/20 border-blue-400/40 text-blue-400" : "bg-purple-600/20 border-purple-400/40 text-purple-400"}`}>
-                  {step === "q1" ? <DoorClosed size={24} /> : <Bot size={24} />}
+                  {step === "q1" ? <Clock size={24} /> : <Bot size={24} />}
                 </div>
                 <div>
                   <span className="text-xs font-black uppercase text-cyan-400 tracking-wider">
-                    {step === "q1" ? "Scenario 1 of 2" : "Scenario 2 of 2"}
+                    {step === "q1" ? "AI Scenario #1 (Randomized)" : "AI Scenario #2 (Randomized)"}
                   </span>
                   <h3 className="text-lg font-black text-white">
-                    {step === "q1" ? "The Jammed Hostel Door Emergency" : "The PEC Hostel & Mess Food Robot"}
+                    PEC Campus Survival Challenge
                   </h3>
                 </div>
               </div>
 
-              <span className="text-xs font-mono text-slate-400 bg-[#050a18] px-3 py-1 rounded-full border border-slate-800">
-                Candidate: <strong className="text-white">{name}</strong>
+              <span className="text-xs font-mono text-slate-400 bg-[#030818] px-3 py-1.5 rounded-full border border-slate-800">
+                Candidate: <strong className="text-white">{name}</strong> ({studentType})
               </span>
             </div>
 
             {/* AI Question Box */}
-            <div className="bg-[#04091a] border border-cyan-500/30 rounded-2xl p-5 mb-6 relative overflow-hidden">
+            <div className="bg-[#030818] border border-cyan-500/30 rounded-2xl p-5 mb-6 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-xl pointer-events-none"></div>
               <p className="text-base sm:text-xl font-black text-cyan-200 leading-snug">
                 "{currentQuestionText}"
               </p>
             </div>
 
-            {/* Input Mode Switcher (Mic vs Keyboard) */}
-            <div className="flex items-center justify-between mb-4 bg-[#050a18] p-1.5 rounded-2xl border border-blue-900/60">
-              <div className="flex items-center space-x-2">
+            {/* Input Mode Switcher (Raw Ultra Sensitive Mic vs Typing) */}
+            <div className="flex flex-col sm:flex-row items-center justify-between mb-4 bg-[#030818] p-2 rounded-2xl border border-blue-900/60 gap-3">
+              <div className="flex items-center space-x-2 w-full sm:w-auto justify-center">
                 <button
                   onClick={() => { audioEngine.playClick(); setInputMode("voice"); }}
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
@@ -417,7 +440,7 @@ export default function PersonaQuiz() {
                   }`}
                 >
                   <Mic size={16} />
-                  <span>🎙️ Ultra-Sensitive Mic</span>
+                  <span>🎙️ Raw Sensitive Mic</span>
                 </button>
 
                 <button
@@ -434,9 +457,9 @@ export default function PersonaQuiz() {
               </div>
 
               {inputMode === "voice" && (
-                <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400 px-3">
+                <div className="flex items-center gap-2 text-xs text-slate-400 px-3">
                   <Sliders size={14} className="text-cyan-400" />
-                  <span>Mic Gain Boost:</span>
+                  <span>Raw Decibel Boost:</span>
                   <input
                     type="range"
                     min="1"
@@ -451,9 +474,9 @@ export default function PersonaQuiz() {
               )}
             </div>
 
-            {/* MIC VOICE ENGINE INTERFACE */}
+            {/* RAW MIC ENGINE INTERFACE (NO NOISE SUPPRESSION) */}
             {inputMode === "voice" && (
-              <div className="bg-[#050b1d] border border-blue-600/30 rounded-2xl p-6 mb-6 text-center">
+              <div className="bg-[#040a1d] border border-blue-600/30 rounded-2xl p-6 mb-6 text-center">
                 <div className="flex flex-col items-center justify-center gap-4">
                   
                   {/* Dynamic Mic Waveform Pulsing Circle */}
@@ -469,7 +492,11 @@ export default function PersonaQuiz() {
                   </button>
 
                   <span className="text-xs font-extrabold uppercase tracking-widest text-slate-300">
-                    {isListening ? "🎙️ High-Sensitivity Listening... Speak Now!" : "Tap Mic to Start Voice Recording"}
+                    {isListening ? "🎙️ High-Sensitivity Raw Mic Active! Speak Now!" : "Tap Mic to Start Voice Capture"}
+                  </span>
+
+                  <span className="text-[10px] text-cyan-400 font-mono">
+                    ⚡ Raw Audio Mode (Noise suppression off for maximum word accuracy)
                   </span>
 
                   {/* Real-time Dynamic Waveform Bars */}
@@ -491,10 +518,10 @@ export default function PersonaQuiz() {
               </div>
             )}
 
-            {/* ANSWER TEXT EDITOR (Shared for both mic transcript & typing) */}
+            {/* ANSWER TEXT EDITOR */}
             <div className="mb-6">
               <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
-                <span>Your Answer Transcript / Solution</span>
+                <span>Your Spoken Transcript / Answer</span>
                 <span className="text-[10px] text-cyan-400 font-mono">
                   {step === "q1" ? answer1.length : answer2.length} characters
                 </span>
@@ -502,20 +529,20 @@ export default function PersonaQuiz() {
 
               <textarea
                 rows={4}
-                placeholder={step === "q1" ? "e.g. I will use a hairpin to lockpick the door or jump from the balcony with bedsheets..." : "e.g. A robot that inspects mess paneer quality using AI computer vision..."}
+                placeholder="Speak or type your solution..."
                 value={step === "q1" ? answer1 : answer2}
                 onChange={(e) => (step === "q1" ? setAnswer1(e.target.value) : setAnswer2(e.target.value))}
-                className="w-full p-4 bg-[#04091a] border border-blue-700/60 focus:border-cyan-400 rounded-2xl text-sm text-white placeholder-slate-500 focus:outline-none transition font-sans leading-relaxed shadow-inner"
+                className="w-full p-4 bg-[#030818] border border-blue-700/60 focus:border-cyan-400 rounded-2xl text-sm text-white placeholder-slate-500 focus:outline-none transition font-sans leading-relaxed shadow-inner"
               />
             </div>
 
             {/* Quick Answer Suggestion Pills */}
             <div className="mb-8">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
-                Need Ideas? Tap a quick scenario response:
+                Need Ideas? Tap a response pill:
               </span>
               <div className="flex flex-wrap gap-2">
-                {(step === "q1" ? q1Pills : q2Pills).map((pill) => (
+                {getPills(currentQuestionText).map((pill) => (
                   <button
                     key={pill}
                     onClick={() => {
@@ -523,7 +550,7 @@ export default function PersonaQuiz() {
                       if (step === "q1") setAnswer1((prev) => (prev ? prev + " " + pill : pill));
                       else setAnswer2((prev) => (prev ? prev + " " + pill : pill));
                     }}
-                    className="px-3 py-1.5 rounded-xl bg-[#0b183b] hover:bg-blue-900/60 border border-blue-700/40 hover:border-cyan-400 text-xs text-blue-200 hover:text-white transition cursor-pointer font-medium"
+                    className="px-3 py-1.5 rounded-xl bg-[#08153b] hover:bg-blue-900/60 border border-blue-700/40 hover:border-cyan-400 text-xs text-blue-200 hover:text-white transition cursor-pointer font-medium"
                   >
                     + {pill}
                   </button>
@@ -536,7 +563,7 @@ export default function PersonaQuiz() {
               onClick={handleNextStep}
               className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#0075FF] via-[#00F0FF] to-[#7000FF] hover:scale-[1.01] text-slate-950 font-black text-base flex items-center justify-center gap-3 shadow-xl shadow-blue-500/30 transition cursor-pointer"
             >
-              <span>{step === "q1" ? "Next Scenario Question" : "Analyze My PEC Tech Persona"}</span>
+              <span>{step === "q1" ? "Next AI Scenario" : "Analyze My PEC Persona"}</span>
               <ArrowRight size={20} />
             </button>
 
@@ -545,16 +572,16 @@ export default function PersonaQuiz() {
 
         {/* STEP 4: AI ANALYSIS SCANNING SCREEN */}
         {step === "analyzing" && (
-          <div className="bg-[#08122c]/95 border border-blue-500/40 rounded-3xl p-10 shadow-2xl backdrop-blur-xl text-center animate-pulse">
+          <div className="bg-[#050c21]/95 border border-blue-500/40 rounded-3xl p-10 shadow-2xl backdrop-blur-xl text-center animate-pulse">
             <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-blue-600/20 border-2 border-cyan-400 flex items-center justify-center text-cyan-400 animate-spin">
               <RefreshCw size={36} />
             </div>
 
             <h2 className="text-2xl sm:text-3xl font-black text-white mb-2">
-              Evaluating PEC Creative Logic...
+              Analyzing Creative Logic...
             </h2>
             <p className="text-xs sm:text-sm text-cyan-300 max-w-md mx-auto mb-6">
-              Analyzing jammed door move & mess food robot idea across CP, AI, and Dev vectors...
+              Evaluating response logic across CP, AI, and Dev vectors for PEC {studentType}...
             </p>
 
             <div className="w-full max-w-md mx-auto bg-slate-900 rounded-full h-3 border border-blue-500/40 overflow-hidden">
@@ -572,7 +599,7 @@ export default function PersonaQuiz() {
               id="persona-card-export"
               className="relative max-w-xl mx-auto rounded-3xl p-1 bg-gradient-to-br from-[#0084FF] via-[#00F0FF] to-[#7000FF] shadow-2xl text-left overflow-hidden"
             >
-              <div className="bg-[#060e26] rounded-[22px] p-6 sm:p-8 border border-blue-400/30 text-white relative">
+              <div className="bg-[#050b1e] rounded-[22px] p-6 sm:p-8 border border-blue-400/30 text-white relative">
                 
                 {/* Hologram Light Glow */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -590,7 +617,7 @@ export default function PersonaQuiz() {
                   </div>
                 </div>
 
-                {/* Fresher Name & Branch */}
+                {/* Candidate Name & Branch */}
                 <div className="mb-6">
                   <div className="text-2xl sm:text-3xl font-black text-white tracking-tight">
                     {personaResult.name}
@@ -612,7 +639,7 @@ export default function PersonaQuiz() {
                 </div>
 
                 {/* 🎯 RECOMMENDED ACM WING */}
-                <div className="bg-[#0b183b] border border-blue-500/40 rounded-2xl p-5 mb-6">
+                <div className="bg-[#081538] border border-blue-500/40 rounded-2xl p-5 mb-6">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400">
                       🎯 RECOMMENDED PEC ACM WING
@@ -626,13 +653,12 @@ export default function PersonaQuiz() {
                   </p>
                 </div>
 
-                {/* VISUAL STATS RADAR / BARS */}
-                <div className="space-y-3 mb-6 bg-[#04091a] p-4 rounded-2xl border border-slate-800">
+                {/* VISUAL STATS BARS */}
+                <div className="space-y-3 mb-6 bg-[#030818] p-4 rounded-2xl border border-slate-800">
                   <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider block mb-1">
-                    PEC Survival & Tech Metrics
+                    PEC Tech & Survival Metrics
                   </span>
 
-                  {/* CP Score */}
                   <div>
                     <div className="flex justify-between text-xs font-bold mb-1">
                       <span className="text-blue-400 flex items-center gap-1"><Terminal size={12} /> CP Logic & Speed</span>
@@ -643,7 +669,6 @@ export default function PersonaQuiz() {
                     </div>
                   </div>
 
-                  {/* AI Score */}
                   <div>
                     <div className="flex justify-between text-xs font-bold mb-1">
                       <span className="text-purple-400 flex items-center gap-1"><Brain size={12} /> AI Innovation</span>
@@ -654,10 +679,9 @@ export default function PersonaQuiz() {
                     </div>
                   </div>
 
-                  {/* Dev Score */}
                   <div>
                     <div className="flex justify-between text-xs font-bold mb-1">
-                      <span className="text-cyan-400 flex items-center gap-1"><Code size={12} /> Dev & Rig Execution</span>
+                      <span className="text-cyan-400 flex items-center gap-1"><Code size={12} /> Dev Execution</span>
                       <span className="font-mono text-white">{personaResult.devScore}%</span>
                     </div>
                     <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden">
@@ -672,7 +696,7 @@ export default function PersonaQuiz() {
                   <p>🤖 "{personaResult.robotComment}"</p>
                 </div>
 
-                {/* Card Footer Verification */}
+                {/* Card Footer */}
                 <div className="mt-5 pt-3 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-500">
                   <span>Verified by PEC ACM - CSS AI Engine</span>
                   <span className="font-mono">ID: ACM-{Math.floor(100000 + Math.random() * 900000)}</span>
@@ -698,15 +722,16 @@ export default function PersonaQuiz() {
                   setCopiedLink(true);
                   setTimeout(() => setCopiedLink(false), 2000);
                 }}
-                className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-[#091533] border border-blue-700/60 hover:border-cyan-400 text-white font-bold text-sm flex items-center justify-center gap-2 transition cursor-pointer"
+                className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-[#081538] border border-blue-700/60 hover:border-cyan-400 text-white font-bold text-sm flex items-center justify-center gap-2 transition cursor-pointer"
               >
                 {copiedLink ? <Check size={18} className="text-emerald-400" /> : <Copy size={18} />}
-                <span>{copiedLink ? "Link Copied!" : "Share Quiz Link"}</span>
+                <span>{copiedLink ? "Link Copied!" : "Share Link"}</span>
               </button>
 
               <button
                 onClick={() => {
                   audioEngine.playClick();
+                  setScenarios(generateRandomScenarios());
                   setStep("profile");
                   setAnswer1("");
                   setAnswer2("");
@@ -714,7 +739,7 @@ export default function PersonaQuiz() {
                 className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 font-bold text-sm flex items-center justify-center gap-2 transition cursor-pointer"
               >
                 <RefreshCw size={18} />
-                <span>Retake Quiz</span>
+                <span>Retake (New AI Scenarios)</span>
               </button>
             </div>
 

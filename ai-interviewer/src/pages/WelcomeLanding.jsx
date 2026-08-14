@@ -10,119 +10,115 @@ import {
   Code,
   Brain,
   Terminal,
-  Trophy,
   ArrowRight,
-  ShieldCheck,
-  Flame,
   Bot,
-  DoorClosed,
+  Clock,
   CheckCircle2,
   Share2,
-  Cpu,
-  Layers
+  Radio,
+  Building2,
+  Bus
 } from "lucide-react";
 import { audioEngine } from "../utils/audioSynth";
 
 export default function WelcomeLanding() {
-  const handleStart = () => {
-    audioEngine.playClick();
+  const handleLaunch = () => {
+    audioEngine.playMicStart();
   };
 
   return (
-    <div className="relative min-h-screen bg-[#030712] text-white font-sans selection:bg-[#0075FF] selection:text-white overflow-hidden">
-      {/* Interactive Cyber Particles Background */}
+    <div className="relative min-h-screen bg-[#020612] text-white font-sans selection:bg-[#0075FF] selection:text-white overflow-hidden">
+      {/* Interactive Cyber Particles Canvas */}
       <CyberParticles />
 
-      {/* Hero Glow Orbs */}
+      {/* Cyber Grid Overlay */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-20 pointer-events-none"></div>
+
+      {/* Futuristic Background Light Orbs */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute -top-32 -left-32 w-[30rem] h-[30rem] bg-blue-600/20 rounded-full blur-[120px]"></div>
-        <div className="absolute top-1/3 -right-32 w-[30rem] h-[30rem] bg-cyan-500/15 rounded-full blur-[120px]"></div>
-        <div className="absolute bottom-10 left-1/3 w-[36rem] h-[36rem] bg-purple-600/15 rounded-full blur-[140px]"></div>
+        <div className="absolute -top-40 -left-40 w-[35rem] h-[35rem] bg-[#0084FF]/25 rounded-full blur-[140px] animate-pulse"></div>
+        <div className="absolute top-1/3 -right-40 w-[35rem] h-[35rem] bg-[#00F0FF]/15 rounded-full blur-[140px]"></div>
+        <div className="absolute bottom-10 left-1/3 w-[40rem] h-[40rem] bg-[#7000FF]/15 rounded-full blur-[160px]"></div>
       </div>
 
       {/* HERO SECTION */}
       <section className="relative pt-12 pb-16 md:pt-20 md:pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center z-10">
         
-        {/* PEC ACM Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#08173d]/90 border border-blue-500/40 text-cyan-300 text-xs font-bold uppercase tracking-wider mb-8 shadow-xl shadow-blue-950/60 backdrop-blur-md">
-          <Zap size={16} className="text-[#00F0FF] animate-pulse" />
+        {/* Floating Glowing Tech Tag */}
+        <div className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full bg-[#071333]/90 border border-cyan-400/50 text-cyan-300 text-xs font-black uppercase tracking-wider mb-8 shadow-2xl shadow-cyan-500/20 backdrop-blur-md animate-bounce">
+          <Radio size={15} className="text-[#00F0FF] animate-ping" />
           <span>PEC ACM STUDENT CHAPTER • COMPUTING STUDENT SOCIETY</span>
         </div>
 
-        {/* Hero Headline */}
+        {/* Hero Title */}
         <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-white tracking-tight leading-[1.1] mb-6">
           Unleash Your PEC Tech Persona & Discover Your{" "}
-          <span className="bg-gradient-to-r from-[#0084FF] via-[#00F0FF] to-[#A855F7] bg-clip-text text-transparent drop-shadow-lg">
+          <span className="bg-gradient-to-r from-[#0084FF] via-[#00F0FF] to-[#A855F7] bg-clip-text text-transparent drop-shadow-[0_10px_20px_rgba(0,132,255,0.4)]">
             Ideal ACM Wing
           </span>
         </h1>
 
         {/* Subtitle */}
-        <p className="max-w-3xl mx-auto text-base sm:text-xl text-blue-100/80 font-normal leading-relaxed mb-10">
-          Answer 2 funny real-life PEC hostel scenarios using your voice or keyboard. Our AI evaluates your creative problem-solving logic to generate your shareable <strong className="text-cyan-300">PEC Tech Persona Card</strong>!
+        <p className="max-w-3xl mx-auto text-base sm:text-xl text-blue-100/90 font-medium leading-relaxed mb-10">
+          Open for all PEC Chandigarh students — <strong className="text-cyan-300">Day Scholars & Hostellers</strong>! Answer 2 dynamic AI-generated real-life scenario questions using raw high-sensitivity voice mic or keyboard to generate your shareable <strong className="text-cyan-300 font-extrabold">PEC Tech Persona Card</strong>!
         </p>
 
-        {/* CTA Launch Button */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-5 mb-16">
+        {/* PRIMARY LAUNCH BUTTON */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-16">
           <Link
             to="/quiz"
-            onClick={handleStart}
-            className="w-full sm:w-auto px-9 py-4 rounded-2xl bg-gradient-to-r from-[#0075FF] via-[#00F0FF] to-[#0066FF] text-slate-950 font-black text-lg flex items-center justify-center gap-3 shadow-2xl shadow-blue-500/40 hover:shadow-cyan-400/60 hover:scale-105 transition-all duration-300 group cursor-pointer"
+            onClick={handleLaunch}
+            className="relative group px-10 py-5 rounded-2xl bg-gradient-to-r from-[#0075FF] via-[#00F0FF] to-[#0066FF] text-slate-950 font-black text-xl flex items-center justify-center gap-3.5 shadow-[0_0_50px_rgba(0,240,255,0.4)] hover:shadow-[0_0_70px_rgba(0,240,255,0.7)] hover:scale-105 transition-all duration-300 cursor-pointer overflow-hidden"
           >
-            <Mic size={24} className="group-hover:rotate-12 transition-transform text-slate-950" />
-            <span>Launch Persona AI Analyzer</span>
-            <ArrowRight size={22} className="group-hover:translate-x-1 transition-transform" />
-          </Link>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent transform -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
 
-          <Link
-            to="/leaderboard"
-            onClick={handleStart}
-            className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-[#091533] border border-blue-700/60 hover:border-cyan-400 text-slate-200 font-bold text-base sm:text-lg flex items-center justify-center gap-2 hover:bg-[#0c1d47] transition-all cursor-pointer"
-          >
-            <Trophy size={20} className="text-yellow-400" />
-            <span>View Fresher Leaderboard</span>
+            <Mic size={26} className="group-hover:rotate-12 transition-transform text-slate-950 shrink-0" />
+            <span className="tracking-tight">Launch Persona AI Analyzer</span>
+            <ArrowRight size={24} className="group-hover:translate-x-1.5 transition-transform shrink-0" />
           </Link>
         </div>
 
-        {/* Dynamic Scenario Showcase Banner */}
-        <div className="relative max-w-4xl mx-auto rounded-3xl p-1 bg-gradient-to-r from-[#0084FF]/60 via-[#00F0FF]/40 to-[#8B5CF6]/60 shadow-2xl">
-          <div className="bg-[#070e24] rounded-[22px] p-6 sm:p-8 border border-blue-900/60 text-left">
+        {/* Dynamic AI Scenario Preview Banner */}
+        <div className="relative max-w-4xl mx-auto rounded-3xl p-1 bg-gradient-to-r from-[#0084FF]/70 via-[#00F0FF]/50 to-[#8B5CF6]/70 shadow-[0_20px_50px_rgba(0,117,255,0.25)]">
+          <div className="bg-[#050c21]/95 rounded-[22px] p-6 sm:p-8 border border-blue-500/30 text-left backdrop-blur-xl">
             <div className="flex items-center justify-between border-b border-blue-900/60 pb-4 mb-6">
               <div className="flex items-center gap-3">
                 <AcmLogo size="sm" showText={false} />
                 <div>
-                  <h3 className="text-lg font-black text-white">The 2 Real-Life PEC Scenarios</h3>
-                  <p className="text-xs text-blue-200/70">Engineered to test your natural engineering instincts</p>
+                  <h3 className="text-lg font-black text-white">Dynamic AI PEC Scenarios</h3>
+                  <p className="text-xs text-blue-200/70">Randomized every session for Day Scholars & Hostellers</p>
                 </div>
               </div>
-              <span className="text-xs font-black bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 px-3 py-1 rounded-full uppercase">
-                60-Sec AI Quiz
+              <span className="text-xs font-black bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 px-3.5 py-1 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-1.5">
+                <Sparkles size={14} /> AI Generated Questions
               </span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Question 1 preview */}
-              <div className="p-4 rounded-2xl bg-[#0b1638] border border-blue-500/30 flex gap-3">
-                <div className="p-2.5 rounded-xl bg-blue-600/20 border border-blue-400/40 text-blue-400 shrink-0 h-fit">
-                  <DoorClosed size={22} />
+              <div className="p-4 rounded-2xl bg-[#08153b] border border-blue-500/40 hover:border-cyan-400 transition-all flex gap-3.5 group">
+                <div className="p-3 rounded-xl bg-blue-600/20 border border-blue-400/40 text-blue-400 shrink-0 h-fit group-hover:scale-110 transition-transform">
+                  <Clock size={24} />
                 </div>
                 <div>
-                  <span className="text-[10px] font-black uppercase text-blue-400 tracking-wider">Scenario #1</span>
+                  <span className="text-[10px] font-black uppercase text-cyan-400 tracking-widest flex items-center gap-1">
+                    <Bus size={12} /> Day Scholar & Hostel Attendance Emergencies
+                  </span>
                   <p className="text-xs font-bold text-white mt-1 leading-snug">
-                    "You have 10 minutes before a 75% attendance lecture and your hostel door lock is jammed. What's your move?"
+                    Randomized scenarios testing CTU bus traffic sprints, jammed locks, and 8 AM 75% attendance lecture survival!
                   </p>
                 </div>
               </div>
 
-              {/* Question 2 preview */}
-              <div className="p-4 rounded-2xl bg-[#0b1638] border border-blue-500/30 flex gap-3">
-                <div className="p-2.5 rounded-xl bg-purple-600/20 border border-purple-400/40 text-purple-400 shrink-0 h-fit">
-                  <Bot size={22} />
+              <div className="p-4 rounded-2xl bg-[#08153b] border border-purple-500/40 hover:border-purple-400 transition-all flex gap-3.5 group">
+                <div className="p-3 rounded-xl bg-purple-600/20 border border-purple-400/40 text-purple-400 shrink-0 h-fit group-hover:scale-110 transition-transform">
+                  <Bot size={24} />
                 </div>
                 <div>
-                  <span className="text-[10px] font-black uppercase text-purple-400 tracking-wider">Scenario #2</span>
+                  <span className="text-[10px] font-black uppercase text-purple-400 tracking-widest flex items-center gap-1">
+                    <Building2 size={12} /> PEC Campus Tech & Robot Ideas
+                  </span>
                   <p className="text-xs font-bold text-white mt-1 leading-snug">
-                    "If you could build a robot to solve ONE annoying problem in PEC hostels or mess food, what would it do?"
+                    Design futuristic gadgets and AI robots to solve mess food, library seat rushes, or campus commuting hassles!
                   </p>
                 </div>
               </div>
@@ -138,17 +134,18 @@ export default function WelcomeLanding() {
             Find Your Technological Tribe
           </h2>
           <p className="text-3xl sm:text-4xl font-black text-white">
-            Which PEC ACM Wing Matches Your Vibe?
+            Which PEC ACM Wing Matches Your Natural Vibe?
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           
           {/* ACM-Dev Card */}
-          <div className="bg-[#08122c] p-8 rounded-3xl border border-blue-500/30 hover:border-cyan-400 transition-all duration-300 group hover:-translate-y-2 flex flex-col justify-between shadow-xl">
+          <div className="bg-[#050d24] p-8 rounded-3xl border border-blue-500/30 hover:border-cyan-400 transition-all duration-300 group hover:-translate-y-2 flex flex-col justify-between shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none"></div>
             <div>
               <div className="w-14 h-14 rounded-2xl bg-cyan-500/15 border border-cyan-400/40 flex items-center justify-center text-cyan-400 mb-6 group-hover:scale-110 transition-transform">
-                <Code size={30} />
+                <Code size={32} />
               </div>
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-2xl font-black text-white">ACM-Dev</h3>
@@ -156,7 +153,7 @@ export default function WelcomeLanding() {
                   Development
                 </span>
               </div>
-              <p className="text-xs text-blue-100/70 leading-relaxed mb-6">
+              <p className="text-xs text-blue-100/80 leading-relaxed mb-6">
                 Full-Stack Web & App Development, Open Source, Hardware/IoT, Cloud Systems, and Hackathon Championship teams.
               </p>
             </div>
@@ -173,10 +170,11 @@ export default function WelcomeLanding() {
           </div>
 
           {/* ACM-AI Card */}
-          <div className="bg-[#08122c] p-8 rounded-3xl border border-purple-500/30 hover:border-purple-400 transition-all duration-300 group hover:-translate-y-2 flex flex-col justify-between shadow-xl">
+          <div className="bg-[#050d24] p-8 rounded-3xl border border-purple-500/30 hover:border-purple-400 transition-all duration-300 group hover:-translate-y-2 flex flex-col justify-between shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl pointer-events-none"></div>
             <div>
               <div className="w-14 h-14 rounded-2xl bg-purple-500/15 border border-purple-400/40 flex items-center justify-center text-purple-400 mb-6 group-hover:scale-110 transition-transform">
-                <Brain size={30} />
+                <Brain size={32} />
               </div>
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-2xl font-black text-white">ACM-AI</h3>
@@ -184,7 +182,7 @@ export default function WelcomeLanding() {
                   Artificial Intelligence
                 </span>
               </div>
-              <p className="text-xs text-blue-100/70 leading-relaxed mb-6">
+              <p className="text-xs text-blue-100/80 leading-relaxed mb-6">
                 Machine Learning, Deep Learning, Generative AI Models, Computer Vision, Robotics, NLP, and Autonomous Agents.
               </p>
             </div>
@@ -201,10 +199,11 @@ export default function WelcomeLanding() {
           </div>
 
           {/* ACM-CP Card */}
-          <div className="bg-[#08122c] p-8 rounded-3xl border border-blue-600/30 hover:border-blue-400 transition-all duration-300 group hover:-translate-y-2 flex flex-col justify-between shadow-xl">
+          <div className="bg-[#050d24] p-8 rounded-3xl border border-blue-600/30 hover:border-blue-400 transition-all duration-300 group hover:-translate-y-2 flex flex-col justify-between shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none"></div>
             <div>
               <div className="w-14 h-14 rounded-2xl bg-blue-500/15 border border-blue-400/40 flex items-center justify-center text-blue-400 mb-6 group-hover:scale-110 transition-transform">
-                <Terminal size={30} />
+                <Terminal size={32} />
               </div>
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-2xl font-black text-white">ACM-CP</h3>
@@ -212,7 +211,7 @@ export default function WelcomeLanding() {
                   Competitive Coding
                 </span>
               </div>
-              <p className="text-xs text-blue-100/70 leading-relaxed mb-6">
+              <p className="text-xs text-blue-100/80 leading-relaxed mb-6">
                 Data Structures, Algorithms, Dynamic Programming, Codeforces, CodeChef contests, ICPC, and Speed Logic.
               </p>
             </div>
@@ -231,56 +230,22 @@ export default function WelcomeLanding() {
         </div>
       </section>
 
-      {/* THE PERSONA OUTPUT FEATURES */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto relative z-10 border-t border-blue-900/40">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-          
-          <div className="p-6 rounded-3xl bg-[#070e24] border border-blue-900/60">
-            <div className="text-3xl font-black text-cyan-400 mb-2 flex items-center justify-center gap-2">
-              <Trophy size={28} /> 👑 Custom Title
-            </div>
-            <p className="text-xs text-blue-200/70">
-              Get titled as "The Future CP Mastermind", "The AI Pioneer", or "The Hackathon Builder"!
-            </p>
-          </div>
-
-          <div className="p-6 rounded-3xl bg-[#070e24] border border-blue-900/60">
-            <div className="text-3xl font-black text-purple-400 mb-2 flex items-center justify-center gap-2">
-              <Mic size={28} /> 🎙️ Dual Input
-            </div>
-            <p className="text-xs text-blue-200/70">
-              Speak via ultra-sensitive microphone with real-time waveform or type your answer directly!
-            </p>
-          </div>
-
-          <div className="p-6 rounded-3xl bg-[#070e24] border border-blue-900/60">
-            <div className="text-3xl font-black text-pink-400 mb-2 flex items-center justify-center gap-2">
-              <Share2 size={28} /> 📸 PNG Export
-            </div>
-            <p className="text-xs text-blue-200/70">
-              Download high-definition PNG Persona Card to share on Instagram & WhatsApp stories!
-            </p>
-          </div>
-
-        </div>
-      </section>
-
-      {/* FINAL CTA FOOTER */}
+      {/* FINAL BOTTOM LAUNCH CTA BANNER */}
       <section className="py-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto text-center relative z-10">
-        <div className="bg-gradient-to-r from-[#08163b] via-[#03091e] to-[#12083b] rounded-3xl p-8 sm:p-12 border border-blue-500/40 shadow-2xl relative overflow-hidden">
+        <div className="bg-gradient-to-r from-[#061438] via-[#020612] to-[#120738] rounded-3xl p-8 sm:p-12 border border-blue-500/40 shadow-2xl relative overflow-hidden">
           <h2 className="text-3xl sm:text-5xl font-black text-white mb-4">
             Ready to Discover Your Persona?
           </h2>
           <p className="text-blue-200/80 text-sm sm:text-base max-w-xl mx-auto mb-8">
-            Join freshers across all branches at PEC. Takes only 60 seconds!
+            Open for Day Scholars & Hostellers across all PEC branches!
           </p>
           <Link
             to="/quiz"
-            onClick={handleStart}
-            className="inline-flex items-center gap-3 px-9 py-4 rounded-2xl bg-gradient-to-r from-[#0075FF] via-[#00F0FF] to-[#7000FF] text-slate-950 font-black text-lg shadow-xl hover:scale-105 transition-transform cursor-pointer"
+            onClick={handleLaunch}
+            className="inline-flex items-center gap-3 px-9 py-4.5 rounded-2xl bg-gradient-to-r from-[#0075FF] via-[#00F0FF] to-[#7000FF] text-slate-950 font-black text-lg shadow-xl hover:scale-105 transition-transform cursor-pointer"
           >
             <Sparkles size={22} className="text-slate-950" />
-            <span>Start Persona Quiz Now</span>
+            <span>Launch Persona AI Analyzer</span>
           </Link>
         </div>
       </section>
