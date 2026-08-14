@@ -50,7 +50,7 @@ export default function AcmTeamSection() {
             </div>
           </div>
           <span className="text-[11px] font-mono bg-blue-950/60 border border-blue-800/40 text-blue-300 px-3 py-1 rounded-full w-fit">
-            Academic Session 2025-26
+            Academic Session 2026-27
           </span>
         </div>
 
