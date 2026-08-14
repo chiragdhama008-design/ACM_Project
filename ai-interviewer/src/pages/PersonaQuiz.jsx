@@ -34,7 +34,9 @@ import {
   Lightbulb,
   HelpCircle,
   Award,
-  ChevronRight
+  ChevronRight,
+  AlertTriangle,
+  AlertCircle
 } from "lucide-react";
 
 export default function PersonaQuiz() {
@@ -73,16 +75,18 @@ export default function PersonaQuiz() {
   const animationFrameRef = useRef(null);
 
   // Branch Options
+  /* Updated branch options */
   const branches = [
-    "Computer Science & Engg (CSE)",
-    "Data Science (DS)",
-    "Artificial Intelligence & DA (AI&DA)",
+    "Computer Science (CSE)",
+    "Computer Science (CSE) – AI",
+    "Computer Science (CSE) – DS",
+    "BDes",
     "Electronics & Comm Engg (ECE)",
     "Electrical Engineering (EE)",
     "Mechanical Engineering (ME)",
     "Civil Engineering (CE)",
     "Materials & Metallurgical (MME)",
-    "Production & Industrial (PE)",
+    "Production & Industrial (PE)"
   ];
 
   // Generate dynamic scenarios on mount or retake
@@ -246,33 +250,97 @@ export default function PersonaQuiz() {
       }
       setStep("q1");
     } else if (step === "q1") {
-      if (!answer1.trim()) {
-        alert("Please speak or type your answer for Scenario 1!");
+      if (!answer1.trim() || answer1.trim().length < 2) {
+        alert("Please speak or type your solution for Scenario 1 (or tap one of the suggested answer pills)!");
         return;
       }
       setStep("q2");
     } else if (step === "q2") {
-      if (!answer2.trim()) {
-        alert("Please speak or type your answer for Scenario 2!");
+      if (!answer2.trim() || answer2.trim().length < 2) {
+        alert("Please speak or type your solution for Scenario 2 (or tap one of the suggested answer pills)!");
         return;
       }
       setStep("analyzing");
 
-      setTimeout(() => {
-        const res = calculatePersona({ 
-          name, 
-          branch: `${branch} (${studentType})`, 
-          answer1, 
-          answer2,
-          scenario1: scenarios.q1,
-          scenario2: scenarios.q2
-        });
-        setPersonaResult(res);
+      // Attempt live LLM server evaluation with fallback to client-side semantic engine
+      const evaluateAsync = async () => {
+        let finalResult = null;
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+          const response = await fetch("/api/persona/evaluate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name,
+              branch: `${branch} (${studentType})`,
+              scenario1: scenarios.q1,
+              answer1,
+              scenario2: scenarios.q2,
+              answer2
+            }),
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data && data.feedbackQ1 && data.feedbackQ2) {
+              finalResult = {
+                name: name || "PEC Student",
+                branch: `${branch} (${studentType})`,
+                personaTitle: data.personaTitle || "The Campus Pragmatist",
+                recommendedWing: data.recommendedWing || "ACM-Dev",
+                wingDescription: data.wingDescription || "Practical problem solver built for PEC Chandigarh.",
+                cpScore: data.cpScore || 75,
+                aiScore: data.aiScore || 75,
+                devScore: data.devScore || 75,
+                hostelSurvival: Math.min(99, Math.max(30, Math.floor(((data.cpScore || 75) + (data.devScore || 75)) / 2))),
+                chaosIq: Math.min(99, Math.max(30, Math.floor(((data.aiScore || 75) + (data.cpScore || 75)) / 2))),
+                lockComment: `Scenario 1 analyzed: "${answer1.substring(0, 45)}..."`,
+                robotComment: `Scenario 2 analyzed: "${answer2.substring(0, 45)}..."`,
+                feedbackQ1: {
+                  ...data.feedbackQ1,
+                  questionTitle: "Scenario 1: Crisis & Attendance Strategy",
+                  questionText: scenarios.q1,
+                  userAnswer: answer1
+                },
+                feedbackQ2: {
+                  ...data.feedbackQ2,
+                  questionTitle: "Scenario 2: Innovation & Automation Strategy",
+                  questionText: scenarios.q2,
+                  userAnswer: answer2
+                },
+                superpower: "Analyzed across CP, AI/ML, and Full-Stack problem vectors.",
+                timestamp: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+              };
+            }
+          }
+        } catch (e) {
+          // Backend offline or timeout
+        }
+
+        // Client-side fallback if server didn't respond
+        if (!finalResult) {
+          finalResult = calculatePersona({
+            name,
+            branch: `${branch} (${studentType})`,
+            answer1,
+            answer2,
+            scenario1: scenarios.q1,
+            scenario2: scenarios.q2
+          });
+        }
+
+        setPersonaResult(finalResult);
         setStep("result");
         triggerConfetti();
         audioEngine.playFanfare();
-        saveResponseToDatabase(res);
-      }, 2500);
+        saveResponseToDatabase(finalResult);
+      };
+
+      setTimeout(evaluateAsync, 1800);
     }
   };
 
@@ -302,29 +370,46 @@ export default function PersonaQuiz() {
     } catch (err) {}
   };
 
-  // Dynamic Suggestion Pills based on scenario
-  const getPills = (questionText) => {
-    const qLower = (questionText || "").toLowerCase();
-    if (qLower.includes("ctu") || qLower.includes("traffic") || qLower.includes("door") || qLower.includes("lock") || qLower.includes("scooter")) {
+  // Dynamic Suggestion Pills precisely mapped to each scenario type
+  const getPills = () => {
+    if (step === "q1") {
+      const qLower = (scenarios.q1 || "").toLowerCase();
+      if (qLower.includes("lecture") || qLower.includes("professor") || qLower.includes("hall") || qLower.includes("wrong")) {
+        return [
+          "Slip out quietly when professor writes on blackboard",
+          "Politely excuse myself citing mandatory lab clash",
+          "Slide out through rear emergency exit door",
+          "Blend into crowd at the transition bell"
+        ];
+      } else if (qLower.includes("door") || qLower.includes("lock") || qLower.includes("jammed")) {
+        return [
+          "Pop latch using credit card / plastic scale",
+          "Climb over balcony partition into adjacent room",
+          "Use screwdriver / hairpin as makeshift lever",
+          "Call hostel wingmate to unscrew latch from outside"
+        ];
+      } else {
+        return [
+          "Take electric auto shortcut through Sector 11",
+          "Switch to fast e-rickshaw via Sector 15 green corridor",
+          "Share live GPS location with CR for attendance buffer",
+          "Quick sprint from PEC Market gate to L-Block"
+        ];
+      }
+    } else {
+      // Step === "q2" (AI Robot / Tool Invention Ideas)
       return [
-        "Take electric auto shortcut through Sector 11",
-        "Jump balcony or pick lock with hairpin",
-        "Email professor saying stuck in traffic",
-        "Run 2 km sprint to L-Block hall",
-        "Offer CTU bus driver extra samosa"
+        "Computer vision camera scanning mess food freshness",
+        "Bluetooth beacon mesh predicting CTU bus empty seats",
+        "AI lecture summarizer bot recording 8 AM classes",
+        "Thermal sensor matrix tracking live library seats",
+        "Smart hostel Wi-Fi auto load-balancer gadget"
       ];
     }
-    return [
-      "Scan mess food quality using AI computer vision",
-      "Automate CTU bus seat finder app",
-      "Proxy attendance robot for 8 AM classes",
-      "Library seat reserved scanner bot",
-      "Hostel Wi-Fi auto booster gadget"
-    ];
   };
 
   return (
-    <div className="relative min-h-screen bg-[#020612] text-white font-sans overflow-hidden py-10 px-4 sm:px-6 lg:px-8 selection:bg-[#0075FF] selection:text-white">
+    <div className="relative min-h-screen bg-[#020612] text-white font-sans overflow-hidden py-10 px-4 sm:px-6 lg:px-8 selection:bg-[#5a7fa6] selection:text-white">
       <CyberParticles />
 
       <div className="relative z-10 max-w-4xl mx-auto">
@@ -397,7 +482,7 @@ export default function PersonaQuiz() {
 
             <button
               onClick={handleNextStep}
-              className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#0075FF] via-[#00F0FF] to-[#7000FF] hover:scale-[1.01] text-slate-950 font-black text-base flex items-center justify-center gap-3 shadow-xl shadow-blue-500/30 transition cursor-pointer"
+              className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#5a7fa6] via-[#5a7fa6] to-[#7000FF] hover:scale-[1.01] text-slate-950 font-black text-base flex items-center justify-center gap-3 shadow-xl shadow-blue-500/30 transition cursor-pointer"
             >
               <span>Generate AI Scenarios & Start</span>
               <ArrowRight size={20} />
@@ -445,7 +530,7 @@ export default function PersonaQuiz() {
                   onClick={() => { audioEngine.playClick(); setInputMode("voice"); }}
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
                     inputMode === "voice"
-                      ? "bg-gradient-to-r from-[#0075FF] to-[#00F0FF] text-slate-950 shadow-md"
+                      ? "bg-gradient-to-r from-[#5a7fa6] to-[#5a7fa6] text-slate-950 shadow-md"
                       : "text-slate-400 hover:text-white"
                   }`}
                 >
@@ -517,7 +602,7 @@ export default function PersonaQuiz() {
                         return (
                           <div
                             key={idx}
-                            className="w-1.5 bg-gradient-to-t from-cyan-500 to-[#0084FF] rounded-full transition-all duration-75"
+                            className="w-1.5 bg-gradient-to-t from-cyan-500 to-[#5a7fa6] rounded-full transition-all duration-75"
                             style={{ height: `${height}%` }}
                           ></div>
                         );
@@ -552,13 +637,13 @@ export default function PersonaQuiz() {
                 Need Ideas? Tap a response pill:
               </span>
               <div className="flex flex-wrap gap-2">
-                {getPills(currentQuestionText).map((pill) => (
+                {getPills().map((pill) => (
                   <button
                     key={pill}
                     onClick={() => {
                       audioEngine.playClick();
-                      if (step === "q1") setAnswer1((prev) => (prev ? prev + " " + pill : pill));
-                      else setAnswer2((prev) => (prev ? prev + " " + pill : pill));
+                      if (step === "q1") setAnswer1(pill);
+                      else setAnswer2(pill);
                     }}
                     className="px-3 py-1.5 rounded-xl bg-[#08153b] hover:bg-blue-900/60 border border-blue-700/40 hover:border-cyan-400 text-xs text-blue-200 hover:text-white transition cursor-pointer font-medium"
                   >
@@ -571,7 +656,7 @@ export default function PersonaQuiz() {
             {/* Next / Submit Button */}
             <button
               onClick={handleNextStep}
-              className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#0075FF] via-[#00F0FF] to-[#7000FF] hover:scale-[1.01] text-slate-950 font-black text-base flex items-center justify-center gap-3 shadow-xl shadow-blue-500/30 transition cursor-pointer"
+              className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#5a7fa6] via-[#5a7fa6] to-[#7000FF] hover:scale-[1.01] text-slate-950 font-black text-base flex items-center justify-center gap-3 shadow-xl shadow-blue-500/30 transition cursor-pointer"
             >
               <span>{step === "q1" ? "Next AI Scenario" : "Analyze My PEC Persona"}</span>
               <ArrowRight size={20} />
@@ -595,7 +680,7 @@ export default function PersonaQuiz() {
             </p>
 
             <div className="w-full max-w-md mx-auto bg-slate-900 rounded-full h-3 border border-blue-500/40 overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-[#0075FF] via-[#00F0FF] to-[#7000FF] animate-pulse w-full"></div>
+              <div className="h-full bg-gradient-to-r from-[#5a7fa6] via-[#5a7fa6] to-[#7000FF] animate-pulse w-full"></div>
             </div>
           </div>
         )}
@@ -607,7 +692,7 @@ export default function PersonaQuiz() {
             {/* The Main Persona Card Container (Export Target) */}
             <div
               id="persona-card-export"
-              className="relative max-w-xl mx-auto rounded-3xl p-1 bg-gradient-to-br from-[#0084FF] via-[#00F0FF] to-[#7000FF] shadow-2xl text-left overflow-hidden"
+              className="relative max-w-xl mx-auto rounded-3xl p-1 bg-gradient-to-br from-[#5a7fa6] via-[#5a7fa6] to-[#7000FF] shadow-2xl text-left overflow-hidden"
             >
               <div className="bg-[#050b1e] rounded-[22px] p-6 sm:p-8 border border-blue-400/30 text-white relative">
                 
@@ -722,7 +807,7 @@ export default function PersonaQuiz() {
                   audioEngine.playClick();
                   downloadCardAsImage("persona-card-export", `${name.replace(/\s+/g, '_')}_PEC_ACM_Card.png`, personaResult);
                 }}
-                className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-[#0075FF] to-[#00F0FF] hover:scale-105 text-slate-950 font-black text-sm flex items-center justify-center gap-2 shadow-xl shadow-blue-500/30 transition cursor-pointer"
+                className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-[#5a7fa6] to-[#5a7fa6] hover:scale-105 text-slate-950 font-black text-sm flex items-center justify-center gap-2 shadow-xl shadow-blue-500/30 transition cursor-pointer"
               >
                 <Download size={18} />
                 <span>Download Persona Card PNG</span>
@@ -788,12 +873,18 @@ export default function PersonaQuiz() {
                       
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-900/40 pb-3">
                         <div className="flex items-center gap-2">
-                          <span className="w-2.5 h-2.5 rounded-full bg-blue-400"></span>
+                          <span className={`w-2.5 h-2.5 rounded-full ${personaResult.feedbackQ1.status === 'GIBBERISH' ? 'bg-red-400' : personaResult.feedbackQ1.status === 'OFF_TOPIC' ? 'bg-amber-400' : 'bg-blue-400'}`}></span>
                           <h4 className="text-sm font-black text-white tracking-wide">
                             {personaResult.feedbackQ1.questionTitle}
                           </h4>
                         </div>
-                        <span className="text-[10px] font-mono font-bold bg-blue-900/40 text-blue-300 border border-blue-700/50 px-2.5 py-1 rounded-full w-fit">
+                        <span className={`text-[10px] font-mono font-bold px-2.5 py-1 rounded-full border w-fit ${
+                          personaResult.feedbackQ1.status === 'GIBBERISH' 
+                            ? 'bg-red-950/60 border-red-500/40 text-red-300' 
+                            : personaResult.feedbackQ1.status === 'OFF_TOPIC'
+                            ? 'bg-amber-950/60 border-amber-500/40 text-amber-300'
+                            : 'bg-blue-900/40 text-blue-300 border-blue-700/50'
+                        }`}>
                           {personaResult.feedbackQ1.focusBadge}
                         </span>
                       </div>
@@ -811,22 +902,44 @@ export default function PersonaQuiz() {
                       {/* Constructive Dual Analysis */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                         
-                        {/* What You Thought Correctly */}
-                        <div className="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/30 space-y-2">
-                          <div className="flex items-center gap-2 text-emerald-300 text-xs font-bold uppercase tracking-wider">
-                            <CheckCircle2 size={15} />
-                            <span>What You Thought Correctly</span>
+                        {/* Box 1: Assessment / Thought Correctly */}
+                        <div className={`p-4 rounded-xl border space-y-2 ${
+                          personaResult.feedbackQ1.status === 'GIBBERISH' 
+                            ? 'bg-red-950/20 border-red-500/30 text-red-200' 
+                            : personaResult.feedbackQ1.status === 'OFF_TOPIC'
+                            ? 'bg-amber-950/20 border-amber-500/30 text-amber-200'
+                            : 'bg-emerald-950/20 border-emerald-500/30 text-emerald-200'
+                        }`}>
+                          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider">
+                            {personaResult.feedbackQ1.status === 'GIBBERISH' ? (
+                              <>
+                                <AlertTriangle size={15} className="text-red-400" />
+                                <span className="text-red-300">Answer Evaluation</span>
+                              </>
+                            ) : personaResult.feedbackQ1.status === 'OFF_TOPIC' ? (
+                              <>
+                                <AlertCircle size={15} className="text-amber-400" />
+                                <span className="text-amber-300">Concept Analysis</span>
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle2 size={15} className="text-emerald-400" />
+                                <span className="text-emerald-300">What You Thought Correctly</span>
+                              </>
+                            )}
                           </div>
                           <p className="text-xs text-slate-200 leading-relaxed">
                             {personaResult.feedbackQ1.thoughtCorrectly}
                           </p>
                         </div>
 
-                        {/* How To Do It Better / AI Recommendation */}
+                        {/* Box 2: Optimal Engineering Approach */}
                         <div className="p-4 rounded-xl bg-cyan-950/20 border border-cyan-500/30 space-y-2">
                           <div className="flex items-center gap-2 text-cyan-300 text-xs font-bold uppercase tracking-wider">
                             <Sparkles size={15} />
-                            <span>Optimal Engineering Approach</span>
+                            <span>
+                              {personaResult.feedbackQ1.status === 'GIBBERISH' ? 'Recommended Campus Strategy' : 'Optimal Engineering Approach'}
+                            </span>
                           </div>
                           <p className="text-xs text-slate-200 leading-relaxed">
                             {personaResult.feedbackQ1.betterWay}
@@ -843,12 +956,18 @@ export default function PersonaQuiz() {
                       
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-900/40 pb-3">
                         <div className="flex items-center gap-2">
-                          <span className="w-2.5 h-2.5 rounded-full bg-purple-400"></span>
+                          <span className={`w-2.5 h-2.5 rounded-full ${personaResult.feedbackQ2.status === 'GIBBERISH' ? 'bg-red-400' : personaResult.feedbackQ2.status === 'OFF_TOPIC' ? 'bg-amber-400' : 'bg-purple-400'}`}></span>
                           <h4 className="text-sm font-black text-white tracking-wide">
                             {personaResult.feedbackQ2.questionTitle}
                           </h4>
                         </div>
-                        <span className="text-[10px] font-mono font-bold bg-purple-900/40 text-purple-300 border border-purple-700/50 px-2.5 py-1 rounded-full w-fit">
+                        <span className={`text-[10px] font-mono font-bold px-2.5 py-1 rounded-full border w-fit ${
+                          personaResult.feedbackQ2.status === 'GIBBERISH' 
+                            ? 'bg-red-950/60 border-red-500/40 text-red-300' 
+                            : personaResult.feedbackQ2.status === 'OFF_TOPIC'
+                            ? 'bg-amber-950/60 border-amber-500/40 text-amber-300'
+                            : 'bg-purple-900/40 text-purple-300 border-purple-700/50'
+                        }`}>
                           {personaResult.feedbackQ2.focusBadge}
                         </span>
                       </div>
@@ -866,22 +985,44 @@ export default function PersonaQuiz() {
                       {/* Constructive Dual Analysis */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                         
-                        {/* What You Thought Correctly */}
-                        <div className="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/30 space-y-2">
-                          <div className="flex items-center gap-2 text-emerald-300 text-xs font-bold uppercase tracking-wider">
-                            <CheckCircle2 size={15} />
-                            <span>What You Thought Correctly</span>
+                        {/* Box 1: Assessment / Thought Correctly */}
+                        <div className={`p-4 rounded-xl border space-y-2 ${
+                          personaResult.feedbackQ2.status === 'GIBBERISH' 
+                            ? 'bg-red-950/20 border-red-500/30 text-red-200' 
+                            : personaResult.feedbackQ2.status === 'OFF_TOPIC'
+                            ? 'bg-amber-950/20 border-amber-500/30 text-amber-200'
+                            : 'bg-emerald-950/20 border-emerald-500/30 text-emerald-200'
+                        }`}>
+                          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider">
+                            {personaResult.feedbackQ2.status === 'GIBBERISH' ? (
+                              <>
+                                <AlertTriangle size={15} className="text-red-400" />
+                                <span className="text-red-300">Answer Evaluation</span>
+                              </>
+                            ) : personaResult.feedbackQ2.status === 'OFF_TOPIC' ? (
+                              <>
+                                <AlertCircle size={15} className="text-amber-400" />
+                                <span className="text-amber-300">Concept Analysis</span>
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle2 size={15} className="text-emerald-400" />
+                                <span className="text-emerald-300">What You Thought Correctly</span>
+                              </>
+                            )}
                           </div>
                           <p className="text-xs text-slate-200 leading-relaxed">
                             {personaResult.feedbackQ2.thoughtCorrectly}
                           </p>
                         </div>
 
-                        {/* How To Do It Better / AI Recommendation */}
+                        {/* Box 2: Optimal Engineering Approach */}
                         <div className="p-4 rounded-xl bg-purple-950/20 border border-purple-500/30 space-y-2">
                           <div className="flex items-center gap-2 text-purple-300 text-xs font-bold uppercase tracking-wider">
                             <Zap size={15} />
-                            <span>Pro Architectural Enhancement</span>
+                            <span>
+                              {personaResult.feedbackQ2.status === 'GIBBERISH' ? 'Viable AI Project Architecture' : 'Pro Architectural Enhancement'}
+                            </span>
                           </div>
                           <p className="text-xs text-slate-200 leading-relaxed">
                             {personaResult.feedbackQ2.betterWay}

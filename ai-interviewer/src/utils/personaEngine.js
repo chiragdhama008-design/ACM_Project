@@ -1,267 +1,332 @@
-// Creative AI Persona Analysis & Strategic Feedback Engine for PEC ACM Student Chapter
+// Intelligent AI Persona Analysis & Strategic Feedback Engine for PEC ACM Student Chapter
+
+/**
+ * Checks if an input string is gibberish, filler, keyboard mash, or too low-effort.
+ */
+export function detectGibberishOrLowEffort(text) {
+  if (!text || typeof text !== "string") return { isGibberish: true, reason: "empty" };
+  const trimmed = text.trim();
+  if (trimmed.length < 4) return { isGibberish: true, reason: "too_short" };
+
+  const lower = trimmed.toLowerCase();
+
+  // Known repetitive filler words
+  const fillerPatterns = [
+    /^([a-z])\1{3,}$/i, // aaaa, zzzz
+    /^(blah\s*)+$/i,    // blah, blah blah, blah blah blah
+    /^(na\s*)+$/i,      // na na na
+    /^(la\s*)+$/i,      // la la la
+    /^(ha\s*)+$/i,      // haha haha
+    /^(da\s*)+$/i,      // da da da
+    /^(yo\s*)+$/i,      // yo yo
+    /^(test\s*)+$/i,    // test test
+    /^(asdf\s*)+$/i,    // asdf
+    /^(qwerty\s*)+$/i,  // qwerty
+    /^(xyz\s*)+$/i,     // xyz
+    /^(abc\s*)+$/i,     // abc
+    /^(idk|dont know|dunno|nothing|none|no|yes|ok|okay|skip|pass)$/i
+  ];
+
+  for (const pattern of fillerPatterns) {
+    if (pattern.test(lower)) {
+      return { isGibberish: true, reason: "filler_pattern" };
+    }
+  }
+
+  // Check character diversity (e.g. keyboard spam like "asdfghjk" or "qweqweqwe")
+  const uniqueChars = new Set(lower.replace(/\s+/g, "").split(""));
+  if (trimmed.length >= 8 && uniqueChars.size <= 3) {
+    return { isGibberish: true, reason: "low_char_diversity" };
+  }
+
+  // Word count check
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  if (words.length === 1 && trimmed.length < 6) {
+    return { isGibberish: true, reason: "single_short_word" };
+  }
+
+  return { isGibberish: false, reason: "valid" };
+}
+
+/**
+ * Detects if an answer is completely mismatched to the question scenario.
+ * e.g., answering "sprint 2 km" to a question about "building an AI robot/gadget".
+ */
+export function detectOffTopic(questionText, answerText, questionNumber) {
+  const lowerAns = (answerText || "").toLowerCase();
+  const lowerQ = (questionText || "").toLowerCase();
+
+  if (questionNumber === 2) {
+    // Question 2 asks to build a robot / AI gadget / automation tool
+    const isCommuteOnly = 
+      (lowerAns.includes("run") || lowerAns.includes("sprint") || lowerAns.includes("walk") || lowerAns.includes("balcony") || lowerAns.includes("auto")) &&
+      !lowerAns.includes("robot") && !lowerAns.includes("ai") && !lowerAns.includes("app") && !lowerAns.includes("bot") && 
+      !lowerAns.includes("device") && !lowerAns.includes("tool") && !lowerAns.includes("sensor") && !lowerAns.includes("camera") &&
+      !lowerAns.includes("scan") && !lowerAns.includes("automate") && !lowerAns.includes("code");
+
+    if (isCommuteOnly) {
+      return {
+        isOffTopic: true,
+        issue: "You provided a physical escape/sprint action instead of designing an AI tool or robot."
+      };
+    }
+  }
+
+  return { isOffTopic: false };
+}
 
 /**
  * Intelligent Question-by-Question Feedback Generator
- * Produces constructive coaching:
- * 1. "What you thought correctly" (strengths & clever thinking)
- * 2. "How to do it better / AI Strategic Recommendation" (alternative optimal approach)
+ * Strictly evaluates:
+ * 1. Gibberish / Low-effort (Calls it out & gives proper solution)
+ * 2. Off-topic (Corrects the concept into an engineering proposal)
+ * 3. Valid Attempt (Identifies specific strengths + provides higher-level engineering optimization)
  */
-function generateQuestionFeedback(questionText, answerText, questionNumber, wing) {
+export function generateQuestionFeedback(questionText, answerText, questionNumber, wing) {
   const ans = (answerText || "").trim();
   const lowerAns = ans.toLowerCase();
   const lowerQ = (questionText || "").toLowerCase();
 
+  // 1. GIBBERISH / FILLER DETECTION
+  const gibberishCheck = detectGibberishOrLowEffort(ans);
+  if (gibberishCheck.isGibberish) {
+    if (questionNumber === 1) {
+      let recommendedSolution = "For this crisis, a logical student strategy is: either slipping out quietly when the professor writes on the board, using an improvised mechanical lever (like a card/pin) on a jammed lock, or taking an electric auto detour through Sector 11 to avoid traffic.";
+      if (lowerQ.includes("lecture") || lowerQ.includes("hall") || lowerQ.includes("wrong")) {
+        recommendedSolution = "To escape a locked 4th-year lecture hall unnoticed: wait for the professor to turn to the blackboard and quietly slip out through the back door, or raise your hand and politely excuse yourself citing a mandatory laboratory clash.";
+      } else if (lowerQ.includes("lock") || lowerQ.includes("door")) {
+        recommendedSolution = "To escape a jammed door in under 10 minutes: use mechanical leverage with a plastic card or hairpin on the latch, or check if the adjacent balcony partition is accessible.";
+      } else if (lowerQ.includes("traffic") || lowerQ.includes("ctu") || lowerQ.includes("scooter")) {
+        recommendedSolution = "To reach PEC before the 75% attendance cutoff: disembark the stuck CTU bus immediately, take an electric auto shortcut through the Sector 11/15 interior grid, and message your CR with a live transit timestamp.";
+      }
+
+      return {
+        questionTitle: "Scenario 1: Crisis & Attendance Strategy",
+        questionText,
+        userAnswer: ans || "(No coherent answer provided)",
+        status: "GIBBERISH",
+        focusBadge: "⚠️ Incoherent / Filler Answer",
+        badgeStyle: "bg-red-950/60 border-red-500/40 text-red-300",
+        thoughtCorrectly: `❌ No engineering logic detected: You entered "${ans || 'empty text'}", which is meaningless filler and does not attempt to solve the crisis. Under real campus constraints, random input results in missed attendance.`,
+        betterWay: `💡 What a logical solution looks like: ${recommendedSolution}`
+      };
+    } else {
+      return {
+        questionTitle: "Scenario 2: Innovation & Automation Strategy",
+        questionText,
+        userAnswer: ans || "(No coherent answer provided)",
+        status: "GIBBERISH",
+        focusBadge: "⚠️ Incoherent / Filler Answer",
+        badgeStyle: "bg-red-950/60 border-red-500/40 text-red-300",
+        thoughtCorrectly: `❌ No engineering concept detected: You entered "${ans || 'empty text'}". Designing tech solutions requires defining a real problem and proposing a concrete mechanism.`,
+        betterWay: `💡 What a strong AI project proposal looks like: Propose a concrete tool such as: an Edge-AI Computer Vision scanner for mess food freshness, a BLE Beacon network predicting CTU bus seat availability, or an automated speech-to-text transcript bot for 8 AM lectures.`
+      };
+    }
+  }
+
+  // 2. OFF-TOPIC CONCEPT DETECTION
+  const offTopicCheck = detectOffTopic(questionText, ans, questionNumber);
+  if (offTopicCheck.isOffTopic) {
+    return {
+      questionTitle: "Scenario 2: Innovation & Automation Strategy",
+      questionText,
+      userAnswer: ans,
+      status: "OFF_TOPIC",
+      focusBadge: "⚠️ Concept Mismatch (Off-Topic)",
+      badgeStyle: "bg-amber-950/60 border-amber-500/40 text-amber-300",
+      thoughtCorrectly: `⚠️ Misaligned concept: You suggested "${ans}", which is a manual physical commute action rather than an AI tool or automation gadget for PEC.`,
+      betterWay: `💡 How to transform this into an actual AI project: Instead of physically running to L-Block, you could propose an Autonomous Campus Dispatcher Bot or a Real-time Transit Queue App using GPS telemetry to automate student arrivals.`
+    };
+  }
+
+  // 3. LEGITIMATE ATTEMPT EVALUATION (Tailored to their actual answer)
   if (questionNumber === 1) {
-    // SCENARIO 1: Emergency Commute / Attendance / Jammed Door / Lab Crisis
+    let focusBadge = "Pragmatic Problem Solving";
     let thoughtCorrectly = "";
     let betterWay = "";
-    let focusBadge = "Pragmatic Problem Solving";
 
-    if (
-      lowerAns.includes("auto") || 
-      lowerAns.includes("cab") || 
-      lowerAns.includes("scooter") || 
-      lowerAns.includes("sprint") || 
-      lowerAns.includes("run") || 
-      lowerAns.includes("shortcut") ||
-      lowerAns.includes("sector 11") ||
-      lowerAns.includes("cycle")
-    ) {
+    if (lowerAns.includes("blackboard") || lowerAns.includes("quiet") || lowerAns.includes("slip") || lowerAns.includes("back door") || lowerAns.includes("stealth") || lowerAns.includes("crawl") || lowerAns.includes("hide")) {
+      focusBadge = "Stealth & Timing Optimization";
+      thoughtCorrectly = `You identified the critical timing window: capitalizing on the professor's divided attention (e.g. when facing the board) to exit with zero disruption.`;
+      betterWay = `To execute this cleanly: check if the rear door has an audible latch before moving, and if caught, have a calm pre-planned excuse (e.g. misread timetable room number) to neutralize disciplinary friction.`;
+    } else if (lowerAns.includes("excuse") || lowerAns.includes("washroom") || lowerAns.includes("water") || lowerAns.includes("medical") || lowerAns.includes("hand") || lowerAns.includes("sir") || lowerAns.includes("ma'am") || lowerAns.includes("teacher")) {
+      focusBadge = "Diplomatic Conflict Resolution";
+      thoughtCorrectly = `You chose transparency and diplomatic communication rather than risking a clumsy stealth exit, preserving professional decorum.`;
+      betterWay = `To make this smoother: state a specific time-sensitive academic conflict (such as "I have a scheduled lab evaluation in L-Block starting right now") rather than a generic washroom excuse, making faculty permission instantaneous.`;
+    } else if (lowerAns.includes("auto") || lowerAns.includes("cab") || lowerAns.includes("scooter") || lowerAns.includes("sprint") || lowerAns.includes("shortcut") || lowerAns.includes("sector 11")) {
       focusBadge = "Rapid Transit & Decisive Action";
-      thoughtCorrectly = `You correctly prioritized swift physical mobility and decisive time conservation over freezing under pressure. Bypassing the immediate choke point (like Tribune Chowk or Sector 11) is the right initial survival instinct for strict 75% attendance criteria.`;
-      betterWay = `Instead of relying solely on last-minute sprinting or spot transport, a more reliable method is setting up automated CTU route telemetry alerts with an O(1) detour protocol (Sector 11/15 green corridors). Additionally, coordinating a pre-agreed peer check-in webhook with your lab partner ensures your attendance is secured before the door is locked.`;
-    } else if (
-      lowerAns.includes("lock") || 
-      lowerAns.includes("door") || 
-      lowerAns.includes("window") || 
-      lowerAns.includes("balcony") || 
-      lowerAns.includes("kick") || 
-      lowerAns.includes("hairpin") || 
-      lowerAns.includes("card") || 
-      lowerAns.includes("screwdriver") ||
-      lowerAns.includes("scale")
-    ) {
-      focusBadge = "Resourceful Physical Hack";
-      thoughtCorrectly = `You displayed sharp situational resourcefulness by looking for mechanical leverage and unconventional exit vectors (like balcony hops or latch manipulation) rather than waiting helplessly for assistance.`;
-      betterWay = `While physical force or improvised lockpicking works in emergencies, it carries damage risks. An engineer's smarter solution is deploying an emergency BLE/NFC latch actuator override or keeping a hidden dual-key magnetic failsafe outside the door, turning a high-stress 10-minute bottleneck into a 5-second seamless escape.`;
-    } else if (
-      lowerAns.includes("email") || 
-      lowerAns.includes("call") || 
-      lowerAns.includes("professor") || 
-      lowerAns.includes("cr") || 
-      lowerAns.includes("friend") || 
-      lowerAns.includes("ta") || 
-      lowerAns.includes("inform") ||
-      lowerAns.includes("message")
-    ) {
-      focusBadge = "Diplomatic Communication & Network Leverage";
-      thoughtCorrectly = `You rightly recognized the power of proactive communication and leveraging your student network. Informing the professor or Class Representative (CR) early establishes transparency before you are officially marked absent.`;
-      betterWay = `While communication is essential, faculty often ignore last-minute individual messages. A superior approach is coupling your alert with verifiable proof (e.g. sharing your live transit timestamp via a trusted peer) and having a classmate immediately request permission for you as you arrive, minimizing academic friction.`;
-    } else if (
-      lowerAns.includes("calc") || 
-      lowerAns.includes("margin") || 
-      lowerAns.includes("75") || 
-      lowerAns.includes("percentage") || 
-      lowerAns.includes("skip") || 
-      lowerAns.includes("bunk")
-    ) {
-      focusBadge = "Analytical Risk Assessment";
-      thoughtCorrectly = `You correctly approached the situation with mathematical risk assessment by analyzing whether missing this specific lecture breaches your critical 75% attendance threshold.`;
-      betterWay = `Instead of manually evaluating margin under stress, an optimal student engineer uses a predictive attendance calculator API connected to your timetable that automatically determines trade-offs and triggers an automated compensatory lab session request.`;
+      thoughtCorrectly = `You recognized that breaking through traffic bottlenecks requires immediate alternate routing rather than waiting passively in queue.`;
+      betterWay = `A superior engineering setup: connect to automated Chandigarh Smart City traffic telemetry feeds via WhatsApp bot to dynamically calculate fastest green corridors before you reach congested roundabouts.`;
+    } else if (lowerAns.includes("card") || lowerAns.includes("pin") || lowerAns.includes("scale") || lowerAns.includes("screwdriver") || lowerAns.includes("balcony") || lowerAns.includes("lock")) {
+      focusBadge = "Mechanical Resourcefulness";
+      thoughtCorrectly = `You showed quick hands-on mechanical intuition by looking for physical leverage on the lock mechanism.`;
+      betterWay = `While physical lock bypassing works in emergencies, modern hostel locks are often reinforced. A safer engineering contingency is setting up a smart BLE emergency override module on your room latch.`;
     } else {
-      focusBadge = "Agile Crisis Management";
-      thoughtCorrectly = `You demonstrated high adaptability and quick improvisation under tight constraints, focusing on overcoming the obstacle immediately rather than giving up.`;
-      betterWay = `To elevate this approach to top-tier engineering standards, combine your intuitive reaction with systematic contingency planning — such as pre-mapped alternative PEC campus entry routes and buddy-system check-in alerts.`;
+      focusBadge = "Adaptive Crisis Action";
+      thoughtCorrectly = `You proposed "${ans}", demonstrating intent to take immediate action under time pressure.`;
+      betterWay = `To level up this strategy: integrate predictive contingency planning — keeping verified campus contact numbers and alternative entry route maps ready before emergencies arise.`;
     }
 
     return {
       questionTitle: "Scenario 1: Crisis & Attendance Strategy",
       questionText,
-      userAnswer: ans || "Action taken under pressure",
+      userAnswer: ans,
+      status: "VALID",
       focusBadge,
+      badgeStyle: "bg-blue-900/40 border-blue-500/30 text-blue-300",
       thoughtCorrectly,
       betterWay
     };
   } else {
-    // SCENARIO 2: Campus Innovation / AI Robot / Automation Tool
+    // SCENARIO 2
+    let focusBadge = "Campus Innovation";
     let thoughtCorrectly = "";
     let betterWay = "";
-    let focusBadge = "Campus Innovation & Design";
 
-    if (
-      lowerAns.includes("food") || 
-      lowerAns.includes("mess") || 
-      lowerAns.includes("paneer") || 
-      lowerAns.includes("canteen") || 
-      lowerAns.includes("meal") || 
-      lowerAns.includes("taste")
-    ) {
-      focusBadge = "Quality of Life & Sensory Tech";
-      thoughtCorrectly = `You accurately identified one of the most critical day-to-day pain points for PEC students — food quality and hygiene in the mess and canteen. Targeting high-frequency student grievances creates immediate community value.`;
-      betterWay = `To make this concept production-ready for an ACM Hackathon, evolve it from basic inspection to an automated computer vision rig (using YOLOv8 on an edge Raspberry Pi) combined with multi-spectral pH/freshness sensors and real-time public dashboard logging, forcing accountability with tamper-proof data.`;
-    } else if (
-      lowerAns.includes("attendance") || 
-      lowerAns.includes("proxy") || 
-      lowerAns.includes("8 am") || 
-      lowerAns.includes("lecture") || 
-      lowerAns.includes("class") || 
-      lowerAns.includes("sleep")
-    ) {
-      focusBadge = "Academic Automation & Workflow Optimization";
-      thoughtCorrectly = `You zeroed in on the perennial student struggle with 8 AM morning lectures and strict attendance tracking, seeking automation to reclaim valuable time.`;
-      betterWay = `Rather than risky proxy attempts, a world-class engineering solution is an AI lecture summarizer and speech-to-text transcript bot deployed in the hall, coupled with an automated smart calendar dispatcher that syncs lecture audio directly to your revision notes in real time.`;
-    } else if (
-      lowerAns.includes("bus") || 
-      lowerAns.includes("ctu") || 
-      lowerAns.includes("seat") || 
-      lowerAns.includes("traffic") || 
-      lowerAns.includes("commute")
-    ) {
-      focusBadge = "Smart Transit & Crowd Density Intelligence";
-      thoughtCorrectly = `You thoughtfully addressed the severe commuting bottleneck faced by Day Scholars travelling via CTU buses, targeting predictability and seat availability.`;
-      betterWay = `Rather than just a static bus tracker, elevate this into a crowd-density estimation network using distributed smartphone Bluetooth beacons and real-time transit telemetry, suggesting optimal boarding sectors and dynamic auto-pooling options for PEC students.`;
-    } else if (
-      lowerAns.includes("library") || 
-      lowerAns.includes("study") || 
-      lowerAns.includes("seat") || 
-      lowerAns.includes("quiet") || 
-      lowerAns.includes("exam")
-    ) {
-      focusBadge = "Resource Allocation & Space Optimization";
-      thoughtCorrectly = `You astutely targeted the severe library seat shortage during mid-sems and end-sems, which directly impacts academic productivity.`;
-      betterWay = `Transform this into an automated thermal-sensor seat matrix connected to a lightweight Telegram/WhatsApp bot, allowing students to check live seat availability and reserve 15-minute grace windows without physical seat hoarding.`;
-    } else if (
-      lowerAns.includes("ai") || 
-      lowerAns.includes("vision") || 
-      lowerAns.includes("model") || 
-      lowerAns.includes("sensor") || 
-      lowerAns.includes("hardware") || 
-      lowerAns.includes("iot") ||
-      lowerAns.includes("robot")
-    ) {
-      focusBadge = "Deep Tech & Edge Robotics";
-      thoughtCorrectly = `You showed impressive technical intuition by designing a multi-disciplinary solution blending software intelligence with real-world physical automation.`;
-      betterWay = `To take this project to the ACM national showcase, incorporate edge-computing with quantized local LLMs/vision models, ensuring zero reliance on patchy campus Wi-Fi and sub-50ms response latency.`;
+    if (lowerAns.includes("food") || lowerAns.includes("mess") || lowerAns.includes("paneer") || lowerAns.includes("canteen")) {
+      focusBadge = "Computer Vision & Quality Assurance";
+      thoughtCorrectly = `You accurately targeted one of the highest-impact daily student grievances — food quality and mess monitoring.`;
+      betterWay = `To make this hackathon-ready: architect it as an Edge-AI setup with a Raspberry Pi + camera running a fine-tuned YOLOv8 classification model, logging live freshness scores directly to a public student dashboard.`;
+    } else if (lowerAns.includes("attendance") || lowerAns.includes("8 am") || lowerAns.includes("lecture") || lowerAns.includes("audio") || lowerAns.includes("notes") || lowerAns.includes("summary")) {
+      focusBadge = "Speech-to-Text & Academic Automation";
+      thoughtCorrectly = `You focused on reclaiming lost study time caused by morning lecture fatigue and manual note-taking.`;
+      betterWay = `Elevate this into an autonomous classroom recorder using Whisper API and local LLMs to generate structured Markdown summaries and revision flashcards immediately after the professor finishes speaking.`;
+    } else if (lowerAns.includes("bus") || lowerAns.includes("ctu") || lowerAns.includes("seat") || lowerAns.includes("traffic")) {
+      focusBadge = "Crowd Density & Transit Telemetry";
+      thoughtCorrectly = `You addressed the major transit predictability bottleneck faced by Day Scholars travelling across the tricity.`;
+      betterWay = `Build a crowd-density sensor network utilizing BLE beacon packet sniffing on student smartphones, providing real-time empty seat estimations without installing expensive hardware on buses.`;
+    } else if (lowerAns.includes("library") || lowerAns.includes("seat") || lowerAns.includes("study") || lowerAns.includes("table")) {
+      focusBadge = "IoT Resource Allocation";
+      thoughtCorrectly = `You pinpointed the severe workspace availability constraint students face during examination weeks.`;
+      betterWay = `Implement a passive infrared (PIR) / thermal desk sensor grid that syncs with a Telegram bot, enabling 15-minute seat reservations and preventing unfair manual hoarding.`;
     } else {
-      focusBadge = "Creative Tech Innovation";
-      thoughtCorrectly = `You demonstrated genuine out-of-the-box thinking and an entrepreneurial mindset aimed at modernizing campus life at PEC Chandigarh.`;
-      betterWay = `Focus on modular systems architecture: breaking down the problem into a rapid MVP (Minimum Viable Prototype) using React, WebSockets, and lightweight microcontrollers, making it pitch-ready for ACM hackathon judges.`;
+      focusBadge = "Applied Tech Engineering";
+      thoughtCorrectly = `You proposed "${ans}", identifying a real area where automation can streamline campus life.`;
+      betterWay = `To make this project viable for an ACM grant: structure it with a clean microservices architecture (FastAPI backend, React frontend, and IoT edge hardware) with clear latency benchmarks.`;
     }
 
     return {
       questionTitle: "Scenario 2: Innovation & Automation Strategy",
       questionText,
-      userAnswer: ans || "Creative campus innovation concept",
+      userAnswer: ans,
+      status: "VALID",
       focusBadge,
+      badgeStyle: "bg-purple-900/40 border-purple-500/30 text-purple-300",
       thoughtCorrectly,
       betterWay
     };
   }
 }
 
+/**
+ * Main Persona Calculator
+ */
 export function calculatePersona({ name, branch, answer1, answer2, scenario1, scenario2 }) {
-  const text1 = (answer1 || "").toLowerCase();
-  const text2 = (answer2 || "").toLowerCase();
-  const combined = text1 + " " + text2;
+  const text1 = (answer1 || "").trim();
+  const text2 = (answer2 || "").trim();
+  const lower1 = text1.toLowerCase();
+  const lower2 = text2.toLowerCase();
+  const combined = lower1 + " " + lower2;
+
+  const g1 = detectGibberishOrLowEffort(text1);
+  const g2 = detectGibberishOrLowEffort(text2);
+  const o2 = detectOffTopic(scenario2, text2, 2);
 
   // 1. Keyword Vectors for Scoring
   const cpKeywords = [
-    "o(1)", "logic", "algorithm", "binary", "shortcut", "optimal", "fast", "brute force", 
-    "math", "physics", "calculate", "speed", "path", "efficient", "tree", "matrix", "codeforces",
-    "icpc", "dp", "greedy", "graph", "analysis", "time complexity", "time", "quick", "window"
+    "o(1)", "logic", "algorithm", "binary", "shortcut", "optimal", "fast", "speed", 
+    "path", "efficient", "tree", "matrix", "codeforces", "icpc", "dp", "greedy", "stealth", "timing"
   ];
 
   const aiKeywords = [
     "ai", "robot", "ml", "neural", "smart", "sensor", "detect", "vision", "camera", 
-    "automated", "machine learning", "scan", "quality", "analyze", "gpt", "model", "predict",
-    "autonomous", "taste", "paneer", "food", "recognize", "bot", "algorithm"
+    "automated", "machine learning", "scan", "quality", "analyze", "gpt", "model", "predict", "freshness"
   ];
 
   const devKeywords = [
     "build", "hack", "app", "hardware", "iot", "rig", "tool", "lever", "door", "lock",
-    "fullstack", "script", "prototype", "system", "design", "mechanic", "diy", "wire", 
-    "device", "project", "web", "react", "api", "mobile", "fix", "kick"
+    "fullstack", "script", "prototype", "system", "design", "mechanic", "diy", "wire", "device", "card", "pin"
   ];
 
-  // Count matches
-  let cpScore = 38 + Math.floor(Math.random() * 14);
-  let aiScore = 38 + Math.floor(Math.random() * 14);
-  let devScore = 38 + Math.floor(Math.random() * 14);
+  let cpScore = 40;
+  let aiScore = 40;
+  let devScore = 40;
 
-  cpKeywords.forEach(k => { if (combined.includes(k)) cpScore += 12; });
-  aiKeywords.forEach(k => { if (combined.includes(k)) aiScore += 12; });
-  devKeywords.forEach(k => { if (combined.includes(k)) devScore += 12; });
+  // Penalize gibberish strictly!
+  if (g1.isGibberish && g2.isGibberish) {
+    cpScore = 20 + Math.floor(Math.random() * 8);
+    aiScore = 20 + Math.floor(Math.random() * 8);
+    devScore = 20 + Math.floor(Math.random() * 8);
+  } else {
+    if (g1.isGibberish) cpScore -= 15;
+    if (g2.isGibberish) aiScore -= 15;
+    if (o2.isOffTopic) aiScore -= 10;
 
-  // Add branch weights
-  const bLower = (branch || "").toLowerCase();
-  if (bLower.includes("cse") || bLower.includes("computer")) {
-    cpScore += 8; devScore += 8;
-  } else if (bLower.includes("ai") || bLower.includes("data")) {
-    aiScore += 12;
-  } else if (bLower.includes("ece") || bLower.includes("ee") || bLower.includes("electric") || bLower.includes("mech")) {
-    devScore += 12;
+    cpKeywords.forEach(k => { if (combined.includes(k)) cpScore += 14; });
+    aiKeywords.forEach(k => { if (combined.includes(k)) aiScore += 14; });
+    devKeywords.forEach(k => { if (combined.includes(k)) devScore += 14; });
+
+    const bLower = (branch || "").toLowerCase();
+    if (bLower.includes("cse") || bLower.includes("computer")) {
+      cpScore += 8; devScore += 8;
+    } else if (bLower.includes("ai") || bLower.includes("data")) {
+      aiScore += 12;
+    } else if (bLower.includes("ece") || bLower.includes("ee") || bLower.includes("electric") || bLower.includes("mech")) {
+      devScore += 12;
+    }
+
+    cpScore = Math.min(98, Math.max(30, cpScore));
+    aiScore = Math.min(98, Math.max(30, aiScore));
+    devScore = Math.min(98, Math.max(30, devScore));
   }
 
-  // Cap scores between 65 and 99
-  cpScore = Math.min(99, Math.max(65, cpScore));
-  aiScore = Math.min(99, Math.max(65, aiScore));
-  devScore = Math.min(99, Math.max(65, devScore));
-
-  const hostelSurvival = Math.min(99, Math.max(72, Math.floor((cpScore + devScore) / 2) + Math.floor(Math.random() * 8)));
-  const chaosIq = Math.min(99, Math.max(70, Math.floor((aiScore + cpScore) / 2) + Math.floor(Math.random() * 8)));
-
-  // 2. Determine Primary Wing & Title
+  // Determine Title
   let recommendedWing = "ACM-Dev";
-  let personaTitle = "The Hackathon Builder";
-  let wingDescription = "You are a pragmatic problem solver! You like building physical or digital tools that immediately solve real campus pains.";
+  let personaTitle = "The Campus Pragmatist";
+  let wingDescription = "You focus on building practical tools to tackle real-world campus bottlenecks.";
 
-  if (cpScore >= aiScore && cpScore >= devScore) {
+  if (g1.isGibberish && g2.isGibberish) {
+    personaTitle = "The Enigmatic Lurker";
+    recommendedWing = "ACM-Dev";
+    wingDescription = "You tested the system with minimal input! Provide detailed technical logic to unlock your full ACM profile.";
+  } else if (cpScore >= aiScore && cpScore >= devScore) {
     recommendedWing = "ACM-CP";
-    personaTitle = "The Future CP Mastermind";
-    wingDescription = "Your mind instantly calculates optimal time complexity! You find shortcuts, analyze constraints, and solve hostel emergencies in O(1) speed.";
+    personaTitle = "The Algorithmic Strategist";
+    wingDescription = "You calculate optimal speed, analyze constraints, and solve emergencies with razor-sharp logic.";
   } else if (aiScore >= cpScore && aiScore >= devScore) {
     recommendedWing = "ACM-AI";
-    personaTitle = "The AI Pioneer";
-    wingDescription = "You think big and envision automated futuristic solutions! Whether it's mess food quality neural scanners or smart hostel bots, AI is your playground.";
+    personaTitle = "The AI Innovator";
+    wingDescription = "You think in automated systems and machine learning models to modernize campus workflows.";
   } else {
     recommendedWing = "ACM-Dev";
-    personaTitle = "The Hackathon Builder";
-    wingDescription = "You turn chaotic ideas into working prototypes! From rigging door locks to building full-stack apps, you are born to build and ship.";
+    personaTitle = "The Systems Architect";
+    wingDescription = "You turn ideas into functioning prototypes, bridging software and hands-on execution.";
   }
 
-  // Fun Unconventional Title overrides based on distinct response patterns
-  if (combined.includes("window") || combined.includes("jump") || combined.includes("balcony")) {
-    personaTitle = "The 75% Attendance Ninja";
-  } else if (combined.includes("paneer") || combined.includes("mess") || combined.includes("roti") || combined.includes("food")) {
-    if (aiScore > devScore) personaTitle = "The Mess Food Alchemist";
-  } else if (combined.includes("kick") || combined.includes("break") || combined.includes("lockpick") || combined.includes("hairpin")) {
-    personaTitle = "The Hostel Hardware Hacker";
-  } else if (combined.includes("ctu") || combined.includes("traffic") || combined.includes("auto")) {
-    personaTitle = "The Chandigarh Transit Tactician";
+  // Generate detailed question-by-question feedback
+  const feedbackQ1 = generateQuestionFeedback(scenario1, text1, 1, recommendedWing);
+  const feedbackQ2 = generateQuestionFeedback(scenario2, text2, 2, recommendedWing);
+
+  // Quotes
+  let lockComment = `Evaluated scenario 1 approach for PEC campus survival.`;
+  let robotComment = `Evaluated scenario 2 tech proposal for ACM ecosystem.`;
+
+  if (feedbackQ1.status === "GIBBERISH") {
+    lockComment = `Entered non-specific filler input for Scenario 1.`;
+  } else {
+    lockComment = `Addressed Scenario 1 with "${text1.substring(0, 45)}..."`;
   }
 
-  // 3. AI Generated Commentary Quotes
-  const lockComments = [
-    `Escaping a locked room in under 10 mins using "${answer1 || 'sheer willpower'}" shows top-tier PEC survival instinct!`,
-    `Your move of "${answer1 || 'pure chaos'}" would leave even the hostel warden impressed!`,
-    `Calculating the 75% attendance trajectory while handling "${answer1 || 'a crisis'}" is absolute peak engineering behavior!`
-  ];
-
-  const robotComments = [
-    `Your robot idea to "${answer2 || 'automate hostel life'}" deserves an immediate seed funding grant from ACM!`,
-    `A robot that can "${answer2 || 'fix mess food'}" would instantly win the PEC ACM Innovation Trophy!`,
-    `Deploying automation for "${answer2 || 'hostel survival'}" proves you were built for PEC's tech ecosystem!`
-  ];
-
-  const randomLockComment = lockComments[Math.floor(Math.random() * lockComments.length)];
-  const randomRobotComment = robotComments[Math.floor(Math.random() * robotComments.length)];
-
-  // 4. Generate Question-by-Question Constructive AI Feedback
-  const feedbackQ1 = generateQuestionFeedback(scenario1, answer1, 1, recommendedWing);
-  const feedbackQ2 = generateQuestionFeedback(scenario2, answer2, 2, recommendedWing);
+  if (feedbackQ2.status === "GIBBERISH") {
+    robotComment = `Entered non-specific filler input for Scenario 2.`;
+  } else if (feedbackQ2.status === "OFF_TOPIC") {
+    robotComment = `Proposed "${text2.substring(0, 45)}..." for Scenario 2.`;
+  } else {
+    robotComment = `Targeted campus automation with "${text2.substring(0, 45)}..."`;
+  }
 
   return {
-    name: name || "Fresher Hacker",
+    name: name || "PEC Student",
     branch: branch || "PEC Chandigarh",
     personaTitle,
     recommendedWing,
@@ -269,13 +334,13 @@ export function calculatePersona({ name, branch, answer1, answer2, scenario1, sc
     cpScore,
     aiScore,
     devScore,
-    hostelSurvival,
-    chaosIq,
-    lockComment: randomLockComment,
-    robotComment: randomRobotComment,
+    hostelSurvival: Math.min(99, Math.max(30, Math.floor((cpScore + devScore) / 2))),
+    chaosIq: Math.min(99, Math.max(30, Math.floor((aiScore + cpScore) / 2))),
+    lockComment,
+    robotComment,
     feedbackQ1,
     feedbackQ2,
-    superpower: `Can solve jammed door locks in O(1) time and design autonomous mess food quality bots!`,
+    superpower: `Analyzed across CP, AI/ML, and Full-Stack problem vectors.`,
     timestamp: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   };
 }

@@ -37,8 +37,8 @@ export default function WelcomeLanding() {
 
       {/* Futuristic Background Light Orbs */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute -top-40 -left-40 w-[35rem] h-[35rem] bg-[#0084FF]/20 rounded-full blur-[140px]"></div>
-        <div className="absolute top-1/3 -right-40 w-[35rem] h-[35rem] bg-[#0084FF]/10 rounded-full blur-[140px]"></div>
+        <div className="absolute -top-40 -left-40 w-[35rem] h-[35rem] bg-[#5a7fa6]/20 rounded-full blur-[140px]"></div>
+        <div className="absolute top-1/3 -right-40 w-[35rem] h-[35rem] bg-[#5a7fa6]/10 rounded-full blur-[140px]"></div>
         <div className="absolute bottom-10 left-1/3 w-[40rem] h-[40rem] bg-[#7000FF]/10 rounded-full blur-[160px]"></div>
       </div>
 
@@ -54,7 +54,7 @@ export default function WelcomeLanding() {
         {/* Hero Title */}
         <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-white tracking-tight leading-[1.1] mb-6">
           Unleash Your PEC Tech Persona & Discover Your{" "}
-          <span className="bg-gradient-to-r from-[#0084FF] via-[#00F0FF] to-[#A855F7] bg-clip-text text-transparent drop-shadow-[0_10px_20px_rgba(0,132,255,0.4)]">
+          <span className="bg-gradient-to-r from-[#5a7fa6] via-[#5a7fa6] to-[#5a7fa6] bg-clip-text text-transparent drop-shadow-[0_10px_20px_rgba(90,126,166,0.4)]">
             Ideal ACM Wing
           </span>
         </h1>
@@ -82,6 +82,9 @@ export default function WelcomeLanding() {
         {/* Dynamic AI Scenario Preview Banner */}
         <div className="relative max-w-4xl mx-auto rounded-3xl p-1 bg-gradient-to-r from-[#0084FF]/70 via-[#00F0FF]/50 to-[#8B5CF6]/70 shadow-[0_20px_50px_rgba(0,117,255,0.25)]">
           <div className="bg-[#050c21]/95 rounded-[22px] p-6 sm:p-8 border border-blue-500/30 text-left backdrop-blur-xl">
+            <div className="w-full max-w-md mx-auto bg-slate-900 rounded-full h-3 border border-blue-500/40 overflow-hidden mb-6">
+              <div className="h-full bg-gradient-to-r from-[#5a7fa6] via-[#5a7fa6] to-[#7000FF] w-full"></div>
+            </div>
             <div className="flex items-center justify-between border-b border-blue-900/60 pb-4 mb-6">
               <div className="flex items-center gap-3">
                 <AcmLogo size="sm" showText={false} />
@@ -134,7 +137,11 @@ export default function WelcomeLanding() {
           <h2 className="text-xs font-black uppercase tracking-widest text-[#00F0FF] mb-2">
             Find Your Technological Tribe
           </h2>
-          <p className="text-3xl sm:text-4xl font-black text-white">
+          <div className="text-xl sm:text-2xl font-black text-white">
+            "{/*personaResult.personaTitle*/}"
+          </div>
+          <p className="text-xs text-gray-400 mt-1">AI-generated title based on your answers</p>
+          <p className="text-3xl sm:text-4xl font-black text-white mt-4">
             Which PEC ACM Wing Matches Your Natural Vibe?
           </p>
         </div>

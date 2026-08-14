@@ -403,8 +403,76 @@ Reply with ONLY valid JSON (NO markdown formatting, NO backticks):
       rating: 7,
       feedback: "Solid explanation demonstrating understanding of key operational dynamics.",
       strengths: "Addressed the core concern directly.",
-      improvementTip: "Include actual pilot metrics or unit economics figures to back up your claim."
-    });
+/**
+ * 🎓 PEC ACM PERSONA AI EVALUATOR
+ * Performs strict, multi-layer evaluation on candidate answers:
+ * - Detects gibberish, filler, and off-topic concepts
+ * - Provides realistic constructive engineering coaching
+ */
+app.post("/api/persona/evaluate", async (req, res) => {
+  const { name, branch, scenario1, answer1, scenario2, answer2 } = req.body;
+
+  const prompt = `You are a technical interviewer and AI Coach for the PEC ACM Student Chapter.
+A student at Punjab Engineering College (PEC Chandigarh) has answered two real-world campus scenarios:
+
+Student Name: ${name || "Student"}
+Branch: ${branch || "Engineering"}
+
+Scenario 1: "${scenario1}"
+Candidate's Answer 1: "${answer1}"
+
+Scenario 2: "${scenario2}"
+Candidate's Answer 2: "${answer2}"
+
+Evaluate BOTH answers honestly and critically:
+1. GIBBERISH / FILLER DETECTION:
+   - If an answer is meaningless filler, keyboard mash, or nonsensical (e.g. "blah blah", "asdf", "test", "idk", "aaaa"):
+     - status: "GIBBERISH"
+     - focusBadge: "⚠️ Incoherent / Filler Answer"
+     - thoughtCorrectly: "❌ No engineering logic detected: You entered a non-specific filler response. Under real campus constraints, this fails to solve the crisis."
+     - betterWay: "💡 What a logical solution looks like: [Provide a concrete, realistic engineering/student solution tailored to this exact scenario]"
+2. OFF-TOPIC CONCEPT DETECTION:
+   - If an answer is completely misaligned with the question (e.g. suggesting a physical sprint/running when asked to build an AI robot/gadget):
+     - status: "OFF_TOPIC"
+     - focusBadge: "⚠️ Concept Mismatch (Off-Topic)"
+     - thoughtCorrectly: "⚠️ Off-topic concept: Your answer describes [what they wrote], which does not address the question of [what was asked]."
+     - betterWay: "💡 Reframing into an engineering solution: [Guide them on how to turn their concept into a proper automated system]"
+3. LEGITIMATE / COHERENT ATTEMPT:
+   - If the student made a genuine attempt:
+     - status: "VALID"
+     - focusBadge: "Short 2-3 word technical badge"
+     - thoughtCorrectly: "Highlight what was practical, clever, or resourceful in their exact idea."
+     - betterWay: "Provide actionable engineering tips to elevate their solution to a higher standard ('You thought this correctly, but it could have been done even better by...')."
+
+Return ONLY valid JSON (no markdown fences, no backticks):
+{
+  "feedbackQ1": {
+    "status": "VALID" | "GIBBERISH" | "OFF_TOPIC",
+    "focusBadge": "string",
+    "thoughtCorrectly": "string",
+    "betterWay": "string"
+  },
+  "feedbackQ2": {
+    "status": "VALID" | "GIBBERISH" | "OFF_TOPIC",
+    "focusBadge": "string",
+    "thoughtCorrectly": "string",
+    "betterWay": "string"
+  },
+  "personaTitle": "string",
+  "recommendedWing": "ACM-CP" | "ACM-AI" | "ACM-Dev",
+  "wingDescription": "string",
+  "cpScore": <number 20-99>,
+  "aiScore": <number 20-99>,
+  "devScore": <number 20-99>
+}`;
+
+  try {
+    const activeEngine = getRandomAIProvider();
+    const { result } = await askObjectWithFallback(activeEngine, prompt);
+    res.json(result);
+  } catch (error) {
+    console.error("Persona evaluation fallback error:", error);
+    res.status(500).json({ error: "AI evaluation fallback" });
   }
 });
 
