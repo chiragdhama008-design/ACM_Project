@@ -71,7 +71,8 @@ export default function PersonaQuiz() {
   const branches = [
     "Computer Science & Engg (CSE)",
     "Data Science (DS)",
-    "Artificial Intelligence & DA (AI&DA)",
+    "CSE (Artificial Intelligence)",
+    "CSE (Data Science),
     "Electronics & Comm Engg (ECE)",
     "Electrical Engineering (EE)",
     "Mechanical Engineering (ME)",
@@ -494,7 +495,7 @@ export default function PersonaQuiz() {
                   </span>
 
                   <span className="text-[10px] text-cyan-400 font-mono">
-                    ⚡ Raw Audio Mode (Noise suppression off for maximum word accuracy)
+                    
                   </span>
 
                   {/* Real-time Dynamic Waveform Bars */}
