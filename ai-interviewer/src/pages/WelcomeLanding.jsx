@@ -5,7 +5,6 @@ import AcmLogo from "../components/AcmLogo";
 import AcmTeamSection from "../components/AcmTeamSection";
 import Footer from "../components/Footer";
 import {
-  Mic,
   Sparkles,
   Zap,
   Code,
@@ -24,7 +23,7 @@ import { audioEngine } from "../utils/audioSynth";
 
 export default function WelcomeLanding() {
   const handleLaunch = () => {
-    audioEngine.playMicStart();
+    audioEngine.playClick();
   };
 
   return (
@@ -61,7 +60,7 @@ export default function WelcomeLanding() {
 
         {/* Subtitle */}
         <p className="max-w-3xl mx-auto text-base sm:text-xl text-blue-100/90 font-medium leading-relaxed mb-10">
-          Open for all PEC Chandigarh students — <strong className="text-cyan-300">Day Scholars & Hostellers</strong>! Answer 2 dynamic AI-generated real-life scenario questions using raw high-sensitivity voice mic or keyboard to generate your shareable <strong className="text-cyan-300 font-extrabold">PEC Tech Persona Card</strong>!
+          Open for all PEC Chandigarh students — <strong className="text-cyan-300">Day Scholars & Hostellers</strong>! Answer 2 dynamic AI-generated real-life scenario questions to generate your shareable <strong className="text-cyan-300 font-extrabold">PEC Tech Persona Card</strong>!
         </p>
 
         {/* PRIMARY LAUNCH BUTTON */}
@@ -73,7 +72,7 @@ export default function WelcomeLanding() {
           >
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent transform -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
 
-            <Mic size={26} className="group-hover:rotate-12 transition-transform text-slate-950 shrink-0" />
+            <Sparkles size={26} className="group-hover:rotate-12 transition-transform text-slate-950 shrink-0" />
             <span className="tracking-tight">Launch Persona AI Analyzer</span>
             <ArrowRight size={24} className="group-hover:translate-x-1.5 transition-transform shrink-0" />
           </Link>

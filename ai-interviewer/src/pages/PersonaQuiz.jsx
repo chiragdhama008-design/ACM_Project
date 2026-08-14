@@ -9,8 +9,6 @@ import { triggerConfetti, downloadCardAsImage } from "../utils/canvasHelper";
 import { audioEngine } from "../utils/audioSynth";
 import { supabase } from "../supabaseClient";
 import {
-  Mic,
-  MicOff,
   Keyboard,
   Sparkles,
   Zap,
@@ -21,7 +19,6 @@ import {
   Download,
   Share2,
   CheckCircle2,
-  Sliders,
   Code,
   Brain,
   Terminal,
@@ -55,26 +52,9 @@ export default function PersonaQuiz() {
   const [answer1, setAnswer1] = useState("");
   const [answer2, setAnswer2] = useState("");
 
-  // Input Mode: 'voice' | 'type'
-  const [inputMode, setInputMode] = useState("voice");
-
-  // Mic & Audio State
-  const [isListening, setIsListening] = useState(false);
-  const [sensitivityGain, setSensitivityGain] = useState(6.0); // Maximum raw sensitivity
-  const [audioLevel, setAudioLevel] = useState(0);
-
   // Results
   const [personaResult, setPersonaResult] = useState(null);
   const [copiedLink, setCopiedLink] = useState(false);
-
-  // References for Web Speech & Web Audio
-  const recognitionRef = useRef(null);
-  const audioCtxRef = useRef(null);
-  const analyserRef = useRef(null);
-  const micStreamRef = useRef(null);
-  const animationFrameRef = useRef(null);
-  // Ref mirror of isListening so callbacks inside startMic always see the live value
-  const isListeningRef = useRef(false);
 
   // Branch Options
   /* Updated branch options */
@@ -111,152 +91,12 @@ export default function PersonaQuiz() {
   // Clean up audio on unmount
   useEffect(() => {
     return () => {
-      stopMic();
       audioEngine.stopSpeaking();
     };
   }, []);
 
-  // Initialize Mic & Audio Amplification with RAW AUDIO (NO NOISE SUPPRESSION / NO AUTOCORRECT)
-  const startMic = async () => {
-    audioEngine.playMicStart();
-    setIsListening(true);
-    isListeningRef.current = true;
-
-    const currentAnswerSetter = step === "q1" ? setAnswer1 : setAnswer2;
-
-    // 1. Web Speech API setup with verbatim capture (no autocorrect)
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      try {
-        const rec = new SpeechRecognition();
-        rec.continuous = true;
-        rec.interimResults = true;
-        rec.lang = "en-IN"; // en-IN for Indian accent accuracy
-        rec.maxAlternatives = 1;
-
-        rec.onresult = (event) => {
-          // Build complete transcript from ALL results (finalized + current interim)
-          let fullTranscript = "";
-          for (let i = 0; i < event.results.length; i++) {
-            fullTranscript += event.results[i][0].transcript;
-          }
-          currentAnswerSetter(fullTranscript);
-        };
-
-        rec.onerror = (e) => {
-          console.warn("Speech recognition error:", e.error, e.message);
-          // Auto-restart on recoverable errors
-          if (e.error === "network" || e.error === "aborted" || e.error === "no-speech") {
-            if (isListeningRef.current) {
-              setTimeout(() => {
-                try { rec.start(); } catch (err) {}
-              }, 300);
-            }
-          }
-        };
-
-        rec.onend = () => {
-          // Use ref (not stale state) to check if mic should stay alive
-          if (isListeningRef.current) {
-            try { rec.start(); } catch (err) {}
-          }
-        };
-
-        rec.start();
-        recognitionRef.current = rec;
-      } catch (err) {
-        console.warn("Could not start SpeechRecognition", err);
-      }
-    } else {
-      alert("Web Speech API not supported on this browser. You can type your answer directly!");
-      setInputMode("type");
-    }
-
-    // 2. RAW Audio Stream: NO Noise Suppression, NO Echo Cancellation, NO Auto Gain
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
-          channelCount: 1,
-          sampleRate: 48000,
-        },
-        video: false,
-      });
-      micStreamRef.current = stream;
-
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      const ctx = new AudioCtx({ sampleRate: 48000 });
-      audioCtxRef.current = ctx;
-
-      const source = ctx.createMediaStreamSource(stream);
-      const gainNode = ctx.createGain();
-      gainNode.gain.value = sensitivityGain; // High sensitivity multiplier
-
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 128; // Slightly higher resolution for better waveform
-      analyser.smoothingTimeConstant = 0.3;
-      analyserRef.current = analyser;
-
-      source.connect(gainNode);
-      gainNode.connect(analyser);
-
-      const bufferLength = analyser.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
-
-      const updateLevel = () => {
-        analyser.getByteFrequencyData(dataArray);
-        let sum = 0;
-        for (let i = 0; i < bufferLength; i++) {
-          sum += dataArray[i];
-        }
-        const avg = sum / bufferLength;
-        setAudioLevel(Math.min(100, Math.floor((avg / 128) * 100 * (sensitivityGain / 2))));
-        animationFrameRef.current = requestAnimationFrame(updateLevel);
-      };
-      updateLevel();
-    } catch (err) {
-      console.warn("Mic MediaStream error", err);
-    }
-  };
-
-  const stopMic = () => {
-    setIsListening(false);
-    isListeningRef.current = false;
-    setAudioLevel(0);
-
-    if (recognitionRef.current) {
-      try { recognitionRef.current.stop(); } catch (e) {}
-      recognitionRef.current = null;
-    }
-
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-    }
-
-    if (micStreamRef.current) {
-      micStreamRef.current.getTracks().forEach((t) => t.stop());
-      micStreamRef.current = null;
-    }
-
-    if (audioCtxRef.current) {
-      try { audioCtxRef.current.close(); } catch (e) {}
-      audioCtxRef.current = null;
-    }
-  };
-
-  const toggleMic = () => {
-    if (isListening) {
-      stopMic();
-    } else {
-      startMic();
-    }
-  };
-
   // Submit Answer & Move Next
   const handleNextStep = () => {
-    stopMic();
     audioEngine.playClick();
 
     if (step === "profile") {
@@ -267,13 +107,13 @@ export default function PersonaQuiz() {
       setStep("q1");
     } else if (step === "q1") {
       if (!answer1.trim() || answer1.trim().length < 2) {
-        alert("Please speak or type your solution for Scenario 1 (or tap one of the suggested answer pills)!");
+        alert("Please type your solution for Scenario 1 (or tap one of the suggested answer pills)!");
         return;
       }
       setStep("q2");
     } else if (step === "q2") {
       if (!answer2.trim() || answer2.trim().length < 2) {
-        alert("Please speak or type your solution for Scenario 2 (or tap one of the suggested answer pills)!");
+        alert("Please type your solution for Scenario 2 (or tap one of the suggested answer pills)!");
         return;
       }
       setStep("analyzing");
@@ -539,108 +379,21 @@ export default function PersonaQuiz() {
               </p>
             </div>
 
-            {/* Input Mode Switcher (Raw Ultra Sensitive Mic vs Typing) */}
-            <div className="flex flex-col sm:flex-row items-center justify-between mb-4 bg-[#030818] p-2 rounded-2xl border border-blue-900/60 gap-3">
-              <div className="flex items-center space-x-2 w-full sm:w-auto justify-center">
-                <button
-                  onClick={() => { audioEngine.playClick(); setInputMode("voice"); }}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
-                    inputMode === "voice"
-                      ? "bg-gradient-to-r from-[#5a7fa6] to-[#5a7fa6] text-slate-950 shadow-md"
-                      : "text-slate-400 hover:text-white"
-                  }`}
-                >
-                  <Mic size={16} />
-                  <span>🎙️ Raw Sensitive Mic</span>
-                </button>
-
-                <button
-                  onClick={() => { audioEngine.playClick(); setInputMode("type"); stopMic(); }}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
-                    inputMode === "type"
-                      ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md"
-                      : "text-slate-400 hover:text-white"
-                  }`}
-                >
-                  <Keyboard size={16} />
-                  <span>⌨️ Type Answer</span>
-                </button>
-              </div>
-
-              {inputMode === "voice" && (
-                <div className="flex items-center gap-2 text-xs text-slate-400 px-3">
-                  <Sliders size={14} className="text-cyan-400" />
-                  <span>Raw Decibel Boost:</span>
-                  <input
-                    type="range"
-                    min="1"
-                    max="10"
-                    step="0.5"
-                    value={sensitivityGain}
-                    onChange={(e) => setSensitivityGain(parseFloat(e.target.value))}
-                    className="w-20 accent-cyan-400"
-                  />
-                  <span className="font-mono text-cyan-300 font-bold">{sensitivityGain}x</span>
-                </div>
-              )}
-            </div>
-
-            {/* RAW MIC ENGINE INTERFACE (NO NOISE SUPPRESSION) */}
-            {inputMode === "voice" && (
-              <div className="bg-[#040a1d] border border-blue-600/30 rounded-2xl p-6 mb-6 text-center">
-                <div className="flex flex-col items-center justify-center gap-4">
-                  
-                  {/* Dynamic Mic Waveform Pulsing Circle */}
-                  <button
-                    onClick={toggleMic}
-                    className={`relative w-24 h-24 rounded-full flex items-center justify-center border-4 transition-all duration-300 cursor-pointer shadow-2xl ${
-                      isListening
-                        ? "bg-red-500/20 border-red-500 text-red-400 scale-110 shadow-red-500/50 animate-pulse"
-                        : "bg-blue-600/20 border-cyan-400 text-cyan-400 hover:scale-105 shadow-cyan-400/30"
-                    }`}
-                  >
-                    {isListening ? <MicOff size={36} /> : <Mic size={36} />}
-                  </button>
-
-                  <span className="text-xs font-extrabold uppercase tracking-widest text-slate-300">
-                    {isListening ? "🎙️ High-Sensitivity Raw Mic Active! Speak Now!" : "Tap Mic to Start Voice Capture"}
-                  </span>
-
-                  <span className="text-[10px] text-cyan-400 font-mono">
-                    ⚡ Raw Audio Mode (Noise suppression off for maximum word accuracy)
-                  </span>
-
-                  {/* Real-time Dynamic Waveform Bars */}
-                  {isListening && (
-                    <div className="flex items-center gap-1.5 h-10 px-4 py-2 bg-slate-900/80 rounded-full border border-blue-500/30">
-                      {[...Array(12)].map((_, idx) => {
-                        const height = Math.max(15, (audioLevel * (idx % 3 + 1)) % 100);
-                        return (
-                          <div
-                            key={idx}
-                            className="w-1.5 bg-gradient-to-t from-cyan-500 to-[#5a7fa6] rounded-full transition-all duration-75"
-                            style={{ height: `${height}%` }}
-                          ></div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
             {/* ANSWER TEXT EDITOR */}
             <div className="mb-6">
               <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
-                <span>Your Spoken Transcript / Answer</span>
-                <span className="text-[10px] text-cyan-400 font-mono">
+                <span className="flex items-center gap-2 text-cyan-300">
+                  <Keyboard size={15} />
+                  <span>Type Your Solution / Strategy</span>
+                </span>
+                <span className="text-[11px] text-cyan-400 font-mono">
                   {step === "q1" ? answer1.length : answer2.length} characters
                 </span>
               </label>
 
               <textarea
-                rows={4}
-                placeholder="Speak or type your solution..."
+                rows={5}
+                placeholder="Type your solution or strategy here..."
                 value={step === "q1" ? answer1 : answer2}
                 onChange={(e) => (step === "q1" ? setAnswer1(e.target.value) : setAnswer2(e.target.value))}
                 className="w-full p-4 bg-[#030818] border border-blue-700/60 focus:border-cyan-400 rounded-2xl text-sm text-white placeholder-slate-500 focus:outline-none transition font-sans leading-relaxed shadow-inner"
