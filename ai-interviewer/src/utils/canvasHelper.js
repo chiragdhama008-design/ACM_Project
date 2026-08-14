@@ -1,4 +1,4 @@
-// Canvas Confetti and Card PNG Export Generator for PEC ACM
+// Canvas Confetti and Bulletproof HD Card PNG Exporter for PEC ACM
 
 // 1. Pure JS Canvas Confetti Engine
 export function triggerConfetti() {
@@ -63,7 +63,6 @@ export function triggerConfetti() {
         ctx.globalAlpha = Math.max(0, p.opacity);
         ctx.fillStyle = p.color;
 
-        // Draw glowing confetti rectangle or star
         ctx.shadowColor = p.color;
         ctx.shadowBlur = 8;
         ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 1.5);
@@ -84,61 +83,193 @@ export function triggerConfetti() {
   render();
 }
 
-// 2. High-Res Canvas Image Download Generator
-export async function downloadCardAsImage(elementId, filename = "PEC_ACM_Persona_Card.png") {
-  const element = document.getElementById(elementId);
-  if (!element) {
-    alert("Card preview not found for export!");
-    return;
-  }
+// 2. Direct High-Definition 2D Canvas Exporter (Works 100% reliably on all browsers)
+export function downloadCardAsImage(elementId, filename = "PEC_ACM_Persona_Card.png", personaData = null) {
+  const canvas = document.createElement("canvas");
+  const width = 600;
+  const height = 820;
+  canvas.width = width * 2; // High DPI (2x resolution)
+  canvas.height = height * 2;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(2, 2);
 
+  // Background Dark Cyber Gradient
+  const bgGrad = ctx.createLinearGradient(0, 0, width, height);
+  bgGrad.addColorStop(0, "#050b1e");
+  bgGrad.addColorStop(0.5, "#081233");
+  bgGrad.addColorStop(1, "#040816");
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, width, height);
+
+  // Outer Border Glow
+  ctx.strokeStyle = "#00F0FF";
+  ctx.lineWidth = 4;
+  ctx.shadowColor = "#0084FF";
+  ctx.shadowBlur = 20;
+  ctx.strokeRect(12, 12, width - 24, height - 24);
+  ctx.shadowBlur = 0; // Reset shadow
+
+  // Inner Border Accent
+  ctx.strokeStyle = "rgba(0, 132, 255, 0.4)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(20, 20, width - 40, height - 40);
+
+  // Header Brand
+  ctx.fillStyle = "#00F0FF";
+  ctx.font = "bold 13px system-ui, sans-serif";
+  ctx.fillText("PEC ACM STUDENT CHAPTER • COMPUTING STUDENT SOCIETY", 40, 55);
+
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "11px system-ui, sans-serif";
+  ctx.fillText(`PEC Chandigarh • ${personaData?.timestamp || new Date().toLocaleDateString()}`, 40, 75);
+
+  // Horizontal Divider Line
+  ctx.strokeStyle = "rgba(0, 132, 255, 0.3)";
+  ctx.beginPath();
+  ctx.moveTo(40, 90);
+  ctx.lineTo(width - 40, 90);
+  ctx.stroke();
+
+  // Candidate Name
+  const candidateName = personaData?.name || "PEC Student";
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "black 28px system-ui, sans-serif";
+  ctx.fillText(candidateName, 40, 130);
+
+  // Branch & Status
+  const branchText = personaData?.branch || "Engineering";
+  ctx.fillStyle = "#00F0FF";
+  ctx.font = "bold 13px system-ui, sans-serif";
+  ctx.fillText(`🎓 ${branchText}`, 40, 155);
+
+  // 👑 Persona Title Box
+  const titleBoxY = 180;
+  const titleBoxGrad = ctx.createLinearGradient(40, titleBoxY, width - 40, titleBoxY + 85);
+  titleBoxGrad.addColorStop(0, "#091c4d");
+  titleBoxGrad.addColorStop(1, "#1e0b4d");
+  ctx.fillStyle = titleBoxGrad;
+  ctx.beginPath();
+  ctx.roundRect(40, titleBoxY, width - 80, 85, 16);
+  ctx.fill();
+  ctx.strokeStyle = "#00F0FF";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  ctx.fillStyle = "#F59E0B";
+  ctx.font = "bold 11px system-ui, sans-serif";
+  ctx.fillText("👑 AI EVALUATED PERSONA TITLE", 58, titleBoxY + 28);
+
+  const personaTitle = personaData?.personaTitle || "The Tech Pioneer";
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "black 22px system-ui, sans-serif";
+  ctx.fillText(`"${personaTitle}"`, 58, titleBoxY + 60);
+
+  // 🎯 Recommended Wing Box
+  const wingBoxY = 285;
+  ctx.fillStyle = "#09173d";
+  ctx.beginPath();
+  ctx.roundRect(40, wingBoxY, width - 80, 95, 16);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(0, 240, 255, 0.4)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = "#00F0FF";
+  ctx.font = "bold 11px system-ui, sans-serif";
+  ctx.fillText("🎯 RECOMMENDED PEC ACM WING", 58, wingBoxY + 26);
+
+  const wingName = personaData?.recommendedWing || "ACM-Dev";
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 16px system-ui, sans-serif";
+  ctx.fillText(`Wing: ${wingName}`, width - 180, wingBoxY + 26);
+
+  const wingDesc = personaData?.wingDescription || "Pragmatic problem solver built for PEC tech ecosystem!";
+  ctx.fillStyle = "#cbd5e1";
+  ctx.font = "12px system-ui, sans-serif";
+  
+  // Wrap text cleanly
+  const words = wingDesc.split(" ");
+  let line = "";
+  let lineY = wingBoxY + 54;
+  words.forEach(w => {
+    if (ctx.measureText(line + w).width > width - 120) {
+      ctx.fillText(line, 58, lineY);
+      line = w + " ";
+      lineY += 18;
+    } else {
+      line += w + " ";
+    }
+  });
+  ctx.fillText(line, 58, lineY);
+
+  // 📊 Metrics Section
+  const metricsY = 400;
+  ctx.fillStyle = "#030818";
+  ctx.beginPath();
+  ctx.roundRect(40, metricsY, width - 80, 190, 16);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+  ctx.stroke();
+
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "bold 11px system-ui, sans-serif";
+  ctx.fillText("PEC TECH & SURVIVAL METRICS", 58, metricsY + 28);
+
+  const drawBar = (label, score, y, color) => {
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 12px system-ui, sans-serif";
+    ctx.fillText(label, 58, y);
+    ctx.fillText(`${score}%`, width - 90, y);
+
+    // Bar Background
+    ctx.fillStyle = "#0f172a";
+    ctx.beginPath();
+    ctx.roundRect(58, y + 8, width - 148, 10, 5);
+    ctx.fill();
+
+    // Fill Progress
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.roundRect(58, y + 8, (width - 148) * (score / 100), 10, 5);
+    ctx.fill();
+  };
+
+  drawBar("CP Logic & Speed", personaData?.cpScore || 85, metricsY + 55, "#3b82f6");
+  drawBar("AI Innovation", personaData?.aiScore || 88, metricsY + 105, "#a855f7");
+  drawBar("Dev Execution", personaData?.devScore || 90, metricsY + 155, "#00F0FF");
+
+  // AI Quotes
+  ctx.fillStyle = "#cbd5e1";
+  ctx.font = "italic 11px system-ui, sans-serif";
+  const lockQuote = personaData?.lockComment || "Escaping attendance emergencies with top-tier PEC survival instinct!";
+  ctx.fillText(`💬 "${lockQuote.substring(0, 75)}..."`, 40, 620);
+
+  const robotQuote = personaData?.robotComment || "Automating campus life proves you belong in PEC ACM!";
+  ctx.fillText(`🤖 "${robotQuote.substring(0, 75)}..."`, 40, 645);
+
+  // Footer Verification Watermark
+  ctx.strokeStyle = "rgba(0, 132, 255, 0.3)";
+  ctx.beginPath();
+  ctx.moveTo(40, 670);
+  ctx.lineTo(width - 40, 670);
+  ctx.stroke();
+
+  ctx.fillStyle = "#64748b";
+  ctx.font = "10px system-ui, sans-serif";
+  ctx.fillText("Verified by PEC ACM - CSS AI Engine", 40, 695);
+  ctx.fillText(`ID: ACM-${Math.floor(100000 + Math.random() * 900000)}`, width - 160, 695);
+
+  // Convert canvas to PNG blob download
   try {
-    // If html2canvas is dynamically available or fallback SVG foreignObject draw
-    const canvas = document.createElement("canvas");
-    const rect = element.getBoundingClientRect();
-    const scale = 2; // High DPI
-
-    canvas.width = rect.width * scale;
-    canvas.height = rect.height * scale;
-    const ctx = canvas.getContext("2d");
-    ctx.scale(scale, scale);
-
-    // Create an inline SVG image representation of the card HTML
-    const htmlString = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="${rect.width}" height="${rect.height}">
-        <foreignObject width="100%" height="100%">
-          <div xmlns="http://www.w3.org/1999/xhtml" style="font-family: system-ui, -apple-system, sans-serif; color: white;">
-            ${element.outerHTML}
-          </div>
-        </foreignObject>
-      </svg>
-    `;
-
-    const svgBlob = new Blob([htmlString], { type: "image/svg+xml;charset=utf-8" });
-    const URL = window.URL || window.webkitURL || window;
-    const blobURL = URL.createObjectURL(svgBlob);
-
-    const img = new Image();
-    img.onload = () => {
-      ctx.drawImage(img, 0, 0);
-      URL.revokeObjectURL(blobURL);
-
-      // Convert canvas to PNG blob download
-      const pngUrl = canvas.toDataURL("image/png");
-      const downloadLink = document.createElement("a");
-      downloadLink.href = pngUrl;
-      downloadLink.download = filename;
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      document.body.removeChild(downloadLink);
-    };
-    img.onerror = () => {
-      // Fallback: simple printable window if SVG draw has cross-origin restrictions
-      window.print();
-    };
-    img.src = blobURL;
+    const pngUrl = canvas.toDataURL("image/png");
+    const downloadLink = document.createElement("a");
+    downloadLink.href = pngUrl;
+    downloadLink.download = filename;
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
   } catch (err) {
-    console.error("Export error", err);
+    console.error("Canvas export error", err);
     window.print();
   }
 }

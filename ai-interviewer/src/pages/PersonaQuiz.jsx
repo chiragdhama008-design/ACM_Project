@@ -39,7 +39,7 @@ export default function PersonaQuiz() {
   // User Profile
   const [name, setName] = useState("");
   const [branch, setBranch] = useState("Computer Science & Engg (CSE)");
-  const [studentType, setStudentType] = useState("Day Scholar"); // Day Scholar vs Hosteller option!
+  const [studentType, setStudentType] = useState("Day Scholar");
 
   // Dynamic AI Generated Scenarios
   const [scenarios, setScenarios] = useState({ q1: "", q2: "" });
@@ -112,7 +112,7 @@ export default function PersonaQuiz() {
 
     const currentAnswerSetter = step === "q1" ? setAnswer1 : setAnswer2;
 
-    // 1. Web Speech API setup with verbatim verbatim capture (no autocorrect)
+    // 1. Web Speech API setup with verbatim capture (no autocorrect)
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       try {
@@ -127,7 +127,6 @@ export default function PersonaQuiz() {
             transcript += event.results[i][0].transcript;
           }
           currentAnswerSetter((prev) => {
-            // Keep exact spoken words verbatim
             return transcript;
           });
         };
@@ -153,7 +152,6 @@ export default function PersonaQuiz() {
     }
 
     // 2. RAW Audio Stream: NO Noise Suppression, NO Echo Cancellation, NO Auto Gain
-    // This allows maximum raw mic sensitivity to pick up every whisper/spoken word!
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -705,10 +703,13 @@ export default function PersonaQuiz() {
               </div>
             </div>
 
-            {/* ACTION BUTTONS */}
+            {/* ACTION BUTTONS (BULLETPROOF PNG CARD EXPORT) */}
             <div className="max-w-xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-3">
               <button
-                onClick={() => { audioEngine.playClick(); downloadCardAsImage("persona-card-export", `${name.replace(/\s+/g, '_')}_PEC_ACM_Card.png`); }}
+                onClick={() => {
+                  audioEngine.playClick();
+                  downloadCardAsImage("persona-card-export", `${name.replace(/\s+/g, '_')}_PEC_ACM_Card.png`, personaResult);
+                }}
                 className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-[#0075FF] to-[#00F0FF] hover:scale-105 text-slate-950 font-black text-sm flex items-center justify-center gap-2 shadow-xl shadow-blue-500/30 transition cursor-pointer"
               >
                 <Download size={18} />
