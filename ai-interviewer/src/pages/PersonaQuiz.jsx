@@ -73,6 +73,8 @@ export default function PersonaQuiz() {
   const analyserRef = useRef(null);
   const micStreamRef = useRef(null);
   const animationFrameRef = useRef(null);
+  // Ref mirror of isListening so callbacks inside startMic always see the live value
+  const isListeningRef = useRef(false);
 
   // Branch Options
   /* Updated branch options */
@@ -118,6 +120,7 @@ export default function PersonaQuiz() {
   const startMic = async () => {
     audioEngine.playMicStart();
     setIsListening(true);
+    isListeningRef.current = true;
 
     const currentAnswerSetter = step === "q1" ? setAnswer1 : setAnswer2;
 
@@ -128,24 +131,33 @@ export default function PersonaQuiz() {
         const rec = new SpeechRecognition();
         rec.continuous = true;
         rec.interimResults = true;
-        rec.lang = "en-US";
+        rec.lang = "en-IN"; // en-IN for Indian accent accuracy
+        rec.maxAlternatives = 1;
 
         rec.onresult = (event) => {
-          let transcript = "";
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            transcript += event.results[i][0].transcript;
+          // Build complete transcript from ALL results (finalized + current interim)
+          let fullTranscript = "";
+          for (let i = 0; i < event.results.length; i++) {
+            fullTranscript += event.results[i][0].transcript;
           }
-          currentAnswerSetter((prev) => {
-            return transcript;
-          });
+          currentAnswerSetter(fullTranscript);
         };
 
         rec.onerror = (e) => {
-          console.warn("Speech recognition error", e);
+          console.warn("Speech recognition error:", e.error, e.message);
+          // Auto-restart on recoverable errors
+          if (e.error === "network" || e.error === "aborted" || e.error === "no-speech") {
+            if (isListeningRef.current) {
+              setTimeout(() => {
+                try { rec.start(); } catch (err) {}
+              }, 300);
+            }
+          }
         };
 
         rec.onend = () => {
-          if (isListening) {
+          // Use ref (not stale state) to check if mic should stay alive
+          if (isListeningRef.current) {
             try { rec.start(); } catch (err) {}
           }
         };
@@ -167,13 +179,15 @@ export default function PersonaQuiz() {
           echoCancellation: false,
           noiseSuppression: false,
           autoGainControl: false,
+          channelCount: 1,
+          sampleRate: 48000,
         },
         video: false,
       });
       micStreamRef.current = stream;
 
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      const ctx = new AudioCtx();
+      const ctx = new AudioCtx({ sampleRate: 48000 });
       audioCtxRef.current = ctx;
 
       const source = ctx.createMediaStreamSource(stream);
@@ -181,7 +195,8 @@ export default function PersonaQuiz() {
       gainNode.gain.value = sensitivityGain; // High sensitivity multiplier
 
       const analyser = ctx.createAnalyser();
-      analyser.fftSize = 64;
+      analyser.fftSize = 128; // Slightly higher resolution for better waveform
+      analyser.smoothingTimeConstant = 0.3;
       analyserRef.current = analyser;
 
       source.connect(gainNode);
@@ -208,6 +223,7 @@ export default function PersonaQuiz() {
 
   const stopMic = () => {
     setIsListening(false);
+    isListeningRef.current = false;
     setAudioLevel(0);
 
     if (recognitionRef.current) {
