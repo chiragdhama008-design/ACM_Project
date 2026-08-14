@@ -403,6 +403,11 @@ Reply with ONLY valid JSON (NO markdown formatting, NO backticks):
       rating: 7,
       feedback: "Solid explanation demonstrating understanding of key operational dynamics.",
       strengths: "Addressed the core concern directly.",
+      improvementTip: "Consider adding more specific data points to strengthen your argument."
+    });
+  }
+});
+
 /**
  * 🎓 PEC ACM PERSONA AI EVALUATOR
  * Performs strict, multi-layer evaluation on candidate answers:
