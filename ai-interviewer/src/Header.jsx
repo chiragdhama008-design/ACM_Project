@@ -1,90 +1,114 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import eicLogo from "./assets/eic_logo.png";
-import { Mic, ShieldCheck, Flame, Sparkles } from "lucide-react";
+import AcmLogo from "./components/AcmLogo";
+import SupabaseSetupModal from "./components/SupabaseSetupModal";
+import { Sparkles, Mic, Volume2, VolumeX, Database, Trophy, Zap, Terminal } from "lucide-react";
+import { audioEngine } from "./utils/audioSynth";
 
-const Header = ({ session, loading }) => {
+export default function Header() {
   const location = useLocation();
-  const isKioskPath = location.pathname === "/" || location.pathname === "/kiosk";
+  const [isMuted, setIsMuted] = useState(false);
+  const [showDbModal, setShowDbModal] = useState(false);
+
+  const toggleSound = () => {
+    const nextState = !isMuted;
+    setIsMuted(nextState);
+    audioEngine.muted = nextState;
+    if (!nextState) audioEngine.playClick();
+  };
+
+  const handleClickNav = () => {
+    audioEngine.playClick();
+  };
 
   return (
-    <div className="w-full font-sans select-none border-b border-[#1e4635]/60 bg-[#060b18]">
-      {/* 1. Top EIC Announcement Bar */}
-      <div className="bg-gradient-to-r from-[#163b2c] via-[#060b18] to-[#1e4635] py-2 px-4 border-b border-[#10b981]/30 text-center text-xs font-semibold text-emerald-300 flex flex-wrap items-center justify-center gap-2">
-        <span className="flex items-center gap-1 bg-[#f49f1c]/20 text-[#f49f1c] px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-[#f49f1c]/40">
-          <Flame size={12} className="animate-pulse" /> E-Summit Active
-        </span>
-        <span>Entrepreneurship & Incubation Cell (EIC) PEC Chandigarh</span>
-        <span className="hidden sm:inline text-[#10b981]/50">•</span>
+    <>
+      <div className="w-full font-sans select-none border-b border-blue-900/40 bg-[#030712]/95 backdrop-blur-md sticky top-0 z-40">
+        {/* Top Announcement Bar */}
+        <div className="bg-gradient-to-r from-[#003B99] via-[#0075FF] to-[#6000FF] py-1.5 px-4 text-center text-xs font-semibold text-white flex items-center justify-center gap-3 shadow-md">
+          <span className="flex items-center gap-1 bg-white/20 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider">
+            <Zap size={12} className="animate-bounce text-yellow-300" /> PEC ACM FRESHER ORIENTATION
+          </span>
+          <span className="hidden sm:inline text-cyan-200">
+            Discover Your Tech Persona & Official ACM Wing Recommendation
+          </span>
+        </div>
 
+        {/* Main Header */}
+        <header className="max-w-7xl mx-auto py-3 px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-3">
+          
+          {/* Logo & Brand Name */}
+          <Link to="/" onClick={handleClickNav} className="flex items-center gap-3 group cursor-pointer">
+            <AcmLogo size="md" showText={true} />
+          </Link>
+
+          {/* Navigation Tabs */}
+          <div className="flex items-center space-x-1.5 bg-[#0a1229] p-1 rounded-2xl border border-blue-900/60 shadow-inner">
+            <Link
+              to="/"
+              onClick={handleClickNav}
+              className={`flex items-center space-x-2 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold transition-all ${
+                location.pathname === "/"
+                  ? "bg-gradient-to-r from-[#0075FF] to-[#00F0FF] text-slate-950 shadow-lg shadow-blue-500/30"
+                  : "text-slate-300 hover:text-white hover:bg-slate-800/60"
+              }`}
+            >
+              <Sparkles size={14} />
+              <span>Welcome</span>
+            </Link>
+
+            <Link
+              to="/quiz"
+              onClick={handleClickNav}
+              className={`flex items-center space-x-2 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold transition-all ${
+                location.pathname === "/quiz"
+                  ? "bg-gradient-to-r from-[#0075FF] to-[#7000FF] text-white shadow-lg shadow-purple-500/30 animate-pulse"
+                  : "text-slate-300 hover:text-white hover:bg-slate-800/60"
+              }`}
+            >
+              <Mic size={14} className="text-cyan-400" />
+              <span>Persona Quiz</span>
+            </Link>
+
+            <Link
+              to="/leaderboard"
+              onClick={handleClickNav}
+              className={`flex items-center space-x-2 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold transition-all ${
+                location.pathname === "/leaderboard"
+                  ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-pink-500/30"
+                  : "text-slate-300 hover:text-white hover:bg-slate-800/60"
+              }`}
+            >
+              <Trophy size={14} className="text-yellow-400" />
+              <span>Leaderboard</span>
+            </Link>
+          </div>
+
+          {/* Controls: Audio Toggle & Supabase Setup */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleSound}
+              className="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-cyan-500/50 text-slate-300 hover:text-white transition flex items-center gap-1.5 text-xs font-semibold"
+              title={isMuted ? "Unmute Audio" : "Mute Audio"}
+            >
+              {isMuted ? <VolumeX size={16} className="text-red-400" /> : <Volume2 size={16} className="text-cyan-400" />}
+              <span className="hidden lg:inline">{isMuted ? "Sound Off" : "Sound On"}</span>
+            </button>
+
+            <button
+              onClick={() => { audioEngine.playClick(); setShowDbModal(true); }}
+              className="px-3.5 py-2 rounded-xl bg-[#091533] border border-blue-500/40 hover:border-cyan-400 text-cyan-300 hover:text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm"
+            >
+              <Database size={15} className="text-cyan-400" />
+              <span>Supabase Guide</span>
+            </button>
+          </div>
+
+        </header>
       </div>
 
-
-      {/* 2. Main Navigation Header */}
-      <header className="max-w-7xl mx-auto h-auto py-3 px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-        {/* Brand Logo and Title */}
-        <Link to="/" className="flex items-center space-x-3 group cursor-pointer">
-          <div className="relative">
-            <div className="absolute -inset-1 bg-gradient-to-r from-[#10b981] to-[#f49f1c] rounded-full blur opacity-40 group-hover:opacity-80 transition duration-300"></div>
-            <img
-              src={eicLogo}
-              alt="EIC PEC Chandigarh Logo"
-              className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-[#10b981] shadow-lg transform group-hover:scale-105 transition duration-200"
-            />
-          </div>
-          <div className="flex flex-col">
-            <div className="flex items-center space-x-2">
-              <span className="font-extrabold text-white text-base sm:text-lg tracking-tight group-hover:text-emerald-400 transition">
-                EIC PEC CHANDIGARH
-              </span>
-              <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-[#f49f1c] bg-[#f49f1c]/10 border border-[#f49f1c]/30 px-1.5 py-0.5 rounded">
-                Kiosk
-              </span>
-            </div>
-            <span className="text-[10px] sm:text-xs text-slate-400 font-medium">
-              Entrepreneurship & Incubation Cell • PEC
-            </span>
-          </div>
-        </Link>
-
-        {/* Navigation Tabs (Responsive on Mobile & Desktop) */}
-        <div className="flex items-center space-x-1.5 bg-[#0b132b] p-1 rounded-2xl border border-slate-800 w-full sm:w-auto justify-center">
-          <Link
-            to="/"
-            className={`flex items-center space-x-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold transition-all ${
-              location.pathname === "/"
-                ? "bg-gradient-to-r from-[#f49f1c] to-[#d97706] text-white shadow-md shadow-amber-950/50"
-                : "text-slate-400 hover:text-white hover:bg-slate-900"
-            }`}
-          >
-            <Sparkles size={14} />
-            <span>Welcome</span>
-          </Link>
-          <Link
-            to="/kiosk"
-            className={`flex items-center space-x-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold transition-all ${
-              location.pathname === "/kiosk" || location.pathname === "/dashboard"
-                ? "bg-gradient-to-r from-[#10b981] to-[#059669] text-white shadow-md shadow-emerald-950/50"
-                : "text-slate-400 hover:text-white hover:bg-slate-900"
-            }`}
-          >
-            <Mic size={14} />
-            <span>2-Min Pitch Kiosk</span>
-          </Link>
-        </div>
-
-        {/* Action / Badge */}
-        <div className="hidden lg:flex items-center space-x-3">
-          <div className="flex items-center space-x-2 text-xs font-semibold text-emerald-400 bg-[#163b2c]/60 border border-[#10b981]/40 px-3 py-1.5 rounded-xl">
-            <Sparkles size={14} className="text-[#f49f1c]" />
-            <span>E-Summit AI Live</span>
-          </div>
-        </div>
-      </header>
-    </div>
-
+      {/* Supabase Guide Modal */}
+      <SupabaseSetupModal isOpen={showDbModal} onClose={() => setShowDbModal(false)} />
+    </>
   );
-};
-
-export default Header;
-
+}

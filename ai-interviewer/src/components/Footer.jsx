@@ -1,12 +1,16 @@
 import React from "react";
+import AcmLogo from "./AcmLogo";
 
 const Footer = () => (
-  <footer className="border-t border-slate-800/80 py-8 px-4 text-center text-xs text-slate-400 space-y-2">
+  <footer className="border-t border-blue-900/40 bg-[#02050e] py-10 px-4 text-center text-xs text-slate-400 space-y-3 relative z-10">
+    <div className="flex items-center justify-center mb-2">
+      <AcmLogo size="sm" showText={true} />
+    </div>
     <p className="font-semibold text-slate-300">
-      Designed & Developed by <span className="text-emerald-400 font-extrabold">Chirag Dhama</span> (SID: <span className="text-[#f49f1c] font-extrabold">25103027</span>)
+      PEC ACM Student Chapter • <span className="text-[#00F0FF] font-extrabold">Computing Student Society (PEC ACM - CSS)</span>
     </p>
     <p className="text-slate-500 text-[11px]">
-      © 2026 Entrepreneurship & Incubation Cell (EIC) • Punjab Engineering College (PEC), Chandigarh
+      © 2026 Punjab Engineering College (PEC), Sector 12, Chandigarh. All Rights Reserved.
     </p>
   </footer>
 );
