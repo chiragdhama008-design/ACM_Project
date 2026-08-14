@@ -1,4 +1,4 @@
-import ai from "../config/gemini.js";
+import { askObjectWithFallback } from "../utils/aiProviders.js";
 import supabase from "../config/supabase.js";
 
 export const evaluateAnswer = async (req, res) => {
@@ -36,16 +36,7 @@ Return ONLY valid JSON.
 }
 `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: prompt,
-    });
-
-    const result = JSON.parse(
-      response.text
-        .replace(/```json/g, "")
-        .replace(/```/g, "")
-    );
+    const { result } = await askObjectWithFallback("groq", prompt);
 
     const { data, error: insertError } = await supabase
       .from("answers")

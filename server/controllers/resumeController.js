@@ -97,7 +97,7 @@ Return:
 Reply with ONLY valid JSON, no markdown fences:
 {"skills": ["...", "..."], "role": "...", "difficulty": "..."}`;
 
-      const { result, providerUsed: usedProvider } = await askObjectWithFallback("gemini", prompt);
+      const { result, providerUsed: usedProvider } = await askObjectWithFallback("groq", prompt);
       parsedAnalysis = result;
       providerUsed = usedProvider;
       console.log(`🚀 Successfully parsed with ${usedProvider}`);

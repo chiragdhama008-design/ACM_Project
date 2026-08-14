@@ -104,40 +104,8 @@ app.post("/api/transcribe", async (req, res) => {
           }
         }
       } catch (groqErr) {
-        console.error("Groq Whisper transcription failed, trying Gemini fallback:", groqErr.message || groqErr);
+        console.error("Groq Whisper transcription failed:", groqErr.message || groqErr);
       }
-    }
-
-    // Provider 2: Gemini Multimodal Audio Transcription
-    try {
-      const ai = (await import("./config/gemini.js")).default;
-      const response = await ai.models.generateContent({
-        model: "gemini-flash-latest",
-        contents: [
-          {
-            role: "user",
-            parts: [
-              {
-                inlineData: {
-                  mimeType: mimeType.split(";")[0],
-                  data: base64Data
-                }
-              },
-              {
-                text: `You are a verbatim speech-to-text transcriber. Transcribe the spoken audio EXACTLY word-for-word as spoken.
-Do NOT auto-correct, rephrase, fix grammar, or alter accent pronunciations or slang.
-If the audio contains no clear human speech, reply with NOTHING.
-Reply with ONLY the exact verbatim transcript text.`
-              }
-            ]
-          }
-        ]
-      });
-
-      const text = response.text ? cleanWhisperHallucinations(response.text) : "";
-      return res.json({ text });
-    } catch (geminiErr) {
-      console.error("Gemini audio transcription fallback error:", geminiErr.message || geminiErr);
     }
 
     res.json({ text: "" });
@@ -149,12 +117,12 @@ Reply with ONLY the exact verbatim transcript text.`
 
 /**
  * UTILITY: RANDOM ENGINE PICKER
- * Randomly shuffles our available pool to determine the primary evaluation target.
+ * Randomly shuffles our available pool (Groq / Mistral) to determine the primary evaluation target.
  * If that choice falls over due to runtime network issues or rate limits, 
  * askObjectWithFallback will still safely walk through the rest of your keys.
  */
 function getRandomAIProvider() {
-  const providers = ["gemini", "groq", "mistral"];
+  const providers = ["groq", "mistral"];
   const randomIndex = Math.floor(Math.random() * providers.length);
   return providers[randomIndex];
 }
@@ -189,7 +157,7 @@ Reply with ONLY valid JSON, no markdown fences:
   } catch (error) {
     console.error("Error evaluating response criteria (all providers failed):", error);
     const isSatisfactory = answer.trim().split(/\s+/).length > 5;
-    res.json({ satisfactory: isSatisfactory, provider: "gemini" });
+    res.json({ satisfactory: isSatisfactory, provider: "groq" });
   }
 });
 
@@ -218,7 +186,7 @@ Reply with ONLY valid JSON, no markdown fences:
     console.error("Error generating follow-up query (all providers failed):", error);
     res.json({ 
       crossQuestion: "Can you elaborate on your experience managing monotonous or highly repetitive tasks over an extended shift?", 
-      provider: "gemini" 
+      provider: "groq" 
     });
   }
 });
@@ -257,7 +225,7 @@ Reply with ONLY valid JSON, no markdown fences or backticks:
 
   try {
     // We use your primary global engine to evaluate everything into a clean payload structure
-    const { result } = await askObjectWithFallback("gemini", evaluationPrompt);
+    const { result } = await askObjectWithFallback("groq", evaluationPrompt);
     res.json(result);
   } catch (error) {
     console.error("Evaluation framework error across all nodes:", error);

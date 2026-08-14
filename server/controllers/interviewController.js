@@ -40,7 +40,7 @@ Context:
 ${resumeText}`
     );
 
-    const { result: questionsData, providerUsed } = await askArrayWithFallback("gemini", prompt);
+    const { result: questionsData, providerUsed } = await askArrayWithFallback("groq", prompt);
 
     const rows = questionsData.map((q) => ({
       resume_id: parsedResumeId,
@@ -77,7 +77,7 @@ export const generateTopicQuestions = async (req, res) => {
 Target difficulty level configuration: "${difficulty}". Estimated interview execution window: ${duration || "15 Min"}.`
     );
 
-    const { result: questionsData, providerUsed } = await askArrayWithFallback("gemini", prompt);
+    const { result: questionsData, providerUsed } = await askArrayWithFallback("groq", prompt);
 
     await supabase.from("questions").delete().eq("topic", domain).is("resume_id", null);
 
@@ -184,7 +184,7 @@ ONLY valid JSON, no markdown fences, no commentary:
   "improvements": ["array of strings showing where they can deepen their knowledge or fix conceptual errors"]
 }`;
 
-    const { result: feedbackResult, providerUsed } = await askObjectWithFallback("gemini", evaluationPrompt);
+    const { result: feedbackResult, providerUsed } = await askObjectWithFallback("groq", evaluationPrompt);
 
     // 🔑 This is now the ONLY place an interview_sessions row gets
     // written — the frontend no longer inserts its own copy. That's what

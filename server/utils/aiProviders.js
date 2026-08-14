@@ -1,10 +1,8 @@
-import ai from "../config/gemini.js";
 import Groq from "groq-sdk";
 import { Mistral } from "@mistralai/mistralai";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "gsk_placeholder_key" });
 const mistral = new Mistral({ apiKey: process.env.MISTRAL_API_KEY || "mistral_placeholder_key" });
-
 
 function stripFences(rawText) {
   return rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
@@ -22,18 +20,6 @@ function parseArrayResponse(rawText) {
 }
 
 // ---- Object-returning calls (check-satisfactory / cross-question / resume analysis) ----
-
-async function askGeminiObject(prompt) {
-  const response = await ai.models.generateContent({
-    // "gemini-flash-latest" is an auto-updating alias that always points to
-    // Google's current stable Flash model, avoiding breakage when Google
-    // deprecates a specific dated version (e.g. "gemini-2.5-flash").
-    model: "gemini-flash-latest",
-    contents: prompt,
-    config: { responseMimeType: "application/json" }
-  });
-  return parseObjectResponse(response.text);
-}
 
 async function askGroqObject(prompt) {
   const completion = await groq.chat.completions.create({
@@ -55,15 +41,6 @@ async function askMistralObject(prompt) {
 
 // ---- Array-returning calls (question generation) ----
 
-async function askGeminiArray(prompt) {
-  const response = await ai.models.generateContent({
-    model: "gemini-flash-latest",
-    contents: prompt,
-    config: { responseMimeType: "application/json" }
-  });
-  return parseArrayResponse(response.text);
-}
-
 async function askGroqArray(prompt) {
   const completion = await groq.chat.completions.create({
     model: "llama-3.3-70b-versatile",
@@ -82,9 +59,9 @@ async function askMistralArray(prompt) {
   return parseArrayResponse(chatResponse.choices[0].message.content);
 }
 
-const OBJECT_PROVIDER_FNS = { gemini: askGeminiObject, groq: askGroqObject, mistral: askMistralObject };
-const ARRAY_PROVIDER_FNS = { gemini: askGeminiArray, groq: askGroqArray, mistral: askMistralArray };
-const FALLBACK_ORDER = ["gemini", "groq", "mistral"];
+const OBJECT_PROVIDER_FNS = { groq: askGroqObject, mistral: askMistralObject };
+const ARRAY_PROVIDER_FNS = { groq: askGroqArray, mistral: askMistralArray };
+const FALLBACK_ORDER = ["groq", "mistral"];
 
 async function runWithFallback(providerFns, preferredProvider, prompt) {
   const order = [
@@ -112,3 +89,4 @@ export async function askObjectWithFallback(preferredProvider, prompt) {
 export async function askArrayWithFallback(preferredProvider, prompt) {
   return runWithFallback(ARRAY_PROVIDER_FNS, preferredProvider, prompt);
 }
+

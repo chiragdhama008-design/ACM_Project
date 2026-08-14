@@ -49,9 +49,9 @@ Reply with ONLY a valid JSON array, no markdown fences, no commentary:
 }
 
 function splitCount(totalCount) {
-  const base = Math.floor(totalCount / 3);
-  let remainder = totalCount - base * 3;
-  return [base, base, base].map((c) => {
+  const base = Math.floor(totalCount / 2);
+  let remainder = totalCount - base * 2;
+  return [base, base].map((c) => {
     if (remainder > 0) { remainder -= 1; return c + 1; }
     return c;
   });
@@ -64,16 +64,15 @@ async function getQuestionsFromProvider(preferredProvider, prompt, count) {
 }
 
 async function runMultiProviderGeneration(promptFor, totalCount) {
-  const [geminiCount, groqCount, mistralCount] = splitCount(totalCount);
+  const [groqCount, mistralCount] = splitCount(totalCount);
 
-  const [geminiResult, groqResult, mistralResult] = await Promise.allSettled([
-    getQuestionsFromProvider("gemini", promptFor(geminiCount), geminiCount),
+  const [groqResult, mistralResult] = await Promise.allSettled([
     getQuestionsFromProvider("groq", promptFor(groqCount), groqCount),
     getQuestionsFromProvider("mistral", promptFor(mistralCount), mistralCount)
   ]);
 
   let combinedQuestions = [];
-  for (const settled of [geminiResult, groqResult, mistralResult]) {
+  for (const settled of [groqResult, mistralResult]) {
     if (settled.status === "fulfilled" && settled.value.questions?.length) {
       combinedQuestions = combinedQuestions.concat(
         settled.value.questions.map((q) => ({ ...q, source: settled.value.providerUsed }))
