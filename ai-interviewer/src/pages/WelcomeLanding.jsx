@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import CyberParticles from "../components/CyberParticles";
 import AcmLogo from "../components/AcmLogo";
+import AcmTeamSection from "../components/AcmTeamSection";
 import Footer from "../components/Footer";
 import {
   Mic,
@@ -36,17 +37,17 @@ export default function WelcomeLanding() {
 
       {/* Futuristic Background Light Orbs */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute -top-40 -left-40 w-[35rem] h-[35rem] bg-[#0084FF]/25 rounded-full blur-[140px] animate-pulse"></div>
-        <div className="absolute top-1/3 -right-40 w-[35rem] h-[35rem] bg-[#00F0FF]/15 rounded-full blur-[140px]"></div>
-        <div className="absolute bottom-10 left-1/3 w-[40rem] h-[40rem] bg-[#7000FF]/15 rounded-full blur-[160px]"></div>
+        <div className="absolute -top-40 -left-40 w-[35rem] h-[35rem] bg-[#0084FF]/20 rounded-full blur-[140px]"></div>
+        <div className="absolute top-1/3 -right-40 w-[35rem] h-[35rem] bg-[#0084FF]/10 rounded-full blur-[140px]"></div>
+        <div className="absolute bottom-10 left-1/3 w-[40rem] h-[40rem] bg-[#7000FF]/10 rounded-full blur-[160px]"></div>
       </div>
 
       {/* HERO SECTION */}
       <section className="relative pt-12 pb-16 md:pt-20 md:pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center z-10">
         
-        {/* Floating Glowing Tech Tag */}
-        <div className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full bg-[#071333]/90 border border-cyan-400/50 text-cyan-300 text-xs font-black uppercase tracking-wider mb-8 shadow-2xl shadow-cyan-500/20 backdrop-blur-md animate-bounce">
-          <Radio size={15} className="text-[#00F0FF] animate-ping" />
+        {/* Static Subdued Tech Tag (No sparkling, eye-friendly faded blue, static) */}
+        <div className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full bg-[#071126]/90 border border-blue-500/30 text-blue-200/90 text-xs font-bold uppercase tracking-wider mb-8 shadow-sm backdrop-blur-md">
+          <Radio size={14} className="text-blue-400/80" />
           <span>PEC ACM STUDENT CHAPTER • COMPUTING STUDENT SOCIETY</span>
         </div>
 
@@ -228,6 +229,11 @@ export default function WelcomeLanding() {
           </div>
 
         </div>
+      </section>
+
+      {/* PEC ACM LEADERSHIP & TEAM SHOWCASE */}
+      <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto relative z-10 mb-10">
+        <AcmTeamSection />
       </section>
 
       {/* FINAL BOTTOM LAUNCH CTA BANNER */}

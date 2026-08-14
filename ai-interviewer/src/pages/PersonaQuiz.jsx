@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import CyberParticles from "../components/CyberParticles";
 import AcmLogo from "../components/AcmLogo";
+import AcmTeamSection from "../components/AcmTeamSection";
 import { calculatePersona } from "../utils/personaEngine";
 import { generateRandomScenarios } from "../utils/scenarioEngine";
 import { triggerConfetti, downloadCardAsImage } from "../utils/canvasHelper";
@@ -29,7 +30,11 @@ import {
   Copy,
   Check,
   Building2,
-  Bus
+  Bus,
+  Lightbulb,
+  HelpCircle,
+  Award,
+  ChevronRight
 } from "lucide-react";
 
 export default function PersonaQuiz() {
@@ -254,7 +259,14 @@ export default function PersonaQuiz() {
       setStep("analyzing");
 
       setTimeout(() => {
-        const res = calculatePersona({ name, branch: `${branch} (${studentType})`, answer1, answer2 });
+        const res = calculatePersona({ 
+          name, 
+          branch: `${branch} (${studentType})`, 
+          answer1, 
+          answer2,
+          scenario1: scenarios.q1,
+          scenario2: scenarios.q2
+        });
         setPersonaResult(res);
         setStep("result");
         triggerConfetti();
@@ -743,6 +755,149 @@ export default function PersonaQuiz() {
                 <span>Retake (New AI Scenarios)</span>
               </button>
             </div>
+
+            {/* NEW: QUESTION-BY-QUESTION CONSTRUCTIVE AI FEEDBACK SECTION */}
+            <div className="w-full max-w-4xl mx-auto mt-10 text-left">
+              <div className="bg-[#050b1e]/90 border border-blue-900/60 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-2xl">
+                
+                {/* Feedback Header */}
+                <div className="flex items-center gap-3 border-b border-blue-900/60 pb-5 mb-6">
+                  <div className="p-2.5 rounded-2xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-300">
+                    <Lightbulb size={24} />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest block font-bold">
+                      SMART AI STRATEGIC COACH
+                    </span>
+                    <h3 className="text-xl sm:text-2xl font-black text-white">
+                      Question-by-Question Evaluation & Coaching
+                    </h3>
+                  </div>
+                </div>
+
+                <p className="text-xs sm:text-sm text-slate-300 mb-6 font-medium leading-relaxed">
+                  Our AI evaluated your raw answers to both scenarios. Here is the breakdown of <strong className="text-emerald-300 font-bold">what you thought correctly</strong> and <strong className="text-cyan-300 font-bold">how you could have optimized it further</strong>:
+                </p>
+
+                {/* Scenario 1 & 2 Feedback Grid */}
+                <div className="space-y-6">
+                  
+                  {/* Scenario 1 Feedback Card */}
+                  {personaResult.feedbackQ1 && (
+                    <div className="p-5 sm:p-6 rounded-2xl bg-[#030818] border border-blue-800/40 shadow-inner space-y-4">
+                      
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-900/40 pb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-blue-400"></span>
+                          <h4 className="text-sm font-black text-white tracking-wide">
+                            {personaResult.feedbackQ1.questionTitle}
+                          </h4>
+                        </div>
+                        <span className="text-[10px] font-mono font-bold bg-blue-900/40 text-blue-300 border border-blue-700/50 px-2.5 py-1 rounded-full w-fit">
+                          {personaResult.feedbackQ1.focusBadge}
+                        </span>
+                      </div>
+
+                      {/* Question Text & Spoken Answer */}
+                      <div className="bg-[#050e26] p-3.5 rounded-xl border border-blue-900/40 space-y-2">
+                        <p className="text-xs text-slate-300 italic">
+                          <strong className="text-slate-400 not-italic font-mono">Q:</strong> "{personaResult.feedbackQ1.questionText}"
+                        </p>
+                        <p className="text-xs text-cyan-200">
+                          <strong className="text-slate-400 font-mono">Your Answer:</strong> "{personaResult.feedbackQ1.userAnswer}"
+                        </p>
+                      </div>
+
+                      {/* Constructive Dual Analysis */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                        
+                        {/* What You Thought Correctly */}
+                        <div className="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/30 space-y-2">
+                          <div className="flex items-center gap-2 text-emerald-300 text-xs font-bold uppercase tracking-wider">
+                            <CheckCircle2 size={15} />
+                            <span>What You Thought Correctly</span>
+                          </div>
+                          <p className="text-xs text-slate-200 leading-relaxed">
+                            {personaResult.feedbackQ1.thoughtCorrectly}
+                          </p>
+                        </div>
+
+                        {/* How To Do It Better / AI Recommendation */}
+                        <div className="p-4 rounded-xl bg-cyan-950/20 border border-cyan-500/30 space-y-2">
+                          <div className="flex items-center gap-2 text-cyan-300 text-xs font-bold uppercase tracking-wider">
+                            <Sparkles size={15} />
+                            <span>Optimal Engineering Approach</span>
+                          </div>
+                          <p className="text-xs text-slate-200 leading-relaxed">
+                            {personaResult.feedbackQ1.betterWay}
+                          </p>
+                        </div>
+
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Scenario 2 Feedback Card */}
+                  {personaResult.feedbackQ2 && (
+                    <div className="p-5 sm:p-6 rounded-2xl bg-[#030818] border border-blue-800/40 shadow-inner space-y-4">
+                      
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-900/40 pb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-purple-400"></span>
+                          <h4 className="text-sm font-black text-white tracking-wide">
+                            {personaResult.feedbackQ2.questionTitle}
+                          </h4>
+                        </div>
+                        <span className="text-[10px] font-mono font-bold bg-purple-900/40 text-purple-300 border border-purple-700/50 px-2.5 py-1 rounded-full w-fit">
+                          {personaResult.feedbackQ2.focusBadge}
+                        </span>
+                      </div>
+
+                      {/* Question Text & Spoken Answer */}
+                      <div className="bg-[#050e26] p-3.5 rounded-xl border border-blue-900/40 space-y-2">
+                        <p className="text-xs text-slate-300 italic">
+                          <strong className="text-slate-400 not-italic font-mono">Q:</strong> "{personaResult.feedbackQ2.questionText}"
+                        </p>
+                        <p className="text-xs text-purple-200">
+                          <strong className="text-slate-400 font-mono">Your Idea:</strong> "{personaResult.feedbackQ2.userAnswer}"
+                        </p>
+                      </div>
+
+                      {/* Constructive Dual Analysis */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                        
+                        {/* What You Thought Correctly */}
+                        <div className="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/30 space-y-2">
+                          <div className="flex items-center gap-2 text-emerald-300 text-xs font-bold uppercase tracking-wider">
+                            <CheckCircle2 size={15} />
+                            <span>What You Thought Correctly</span>
+                          </div>
+                          <p className="text-xs text-slate-200 leading-relaxed">
+                            {personaResult.feedbackQ2.thoughtCorrectly}
+                          </p>
+                        </div>
+
+                        {/* How To Do It Better / AI Recommendation */}
+                        <div className="p-4 rounded-xl bg-purple-950/20 border border-purple-500/30 space-y-2">
+                          <div className="flex items-center gap-2 text-purple-300 text-xs font-bold uppercase tracking-wider">
+                            <Zap size={15} />
+                            <span>Pro Architectural Enhancement</span>
+                          </div>
+                          <p className="text-xs text-slate-200 leading-relaxed">
+                            {personaResult.feedbackQ2.betterWay}
+                          </p>
+                        </div>
+
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+              </div>
+            </div>
+
+            {/* NEW: PEC ACM STUDENT CHAPTER LEADERSHIP & TEAM AT END OF SESSION */}
+            <AcmTeamSection />
 
           </div>
         )}

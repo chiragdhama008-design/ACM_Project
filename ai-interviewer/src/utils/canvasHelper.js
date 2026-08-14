@@ -102,20 +102,20 @@ export function downloadCardAsImage(elementId, filename = "PEC_ACM_Persona_Card.
   ctx.fillRect(0, 0, width, height);
 
   // Outer Border Glow
-  ctx.strokeStyle = "#00F0FF";
-  ctx.lineWidth = 4;
-  ctx.shadowColor = "#0084FF";
-  ctx.shadowBlur = 20;
+  ctx.strokeStyle = "#38bdf8";
+  ctx.lineWidth = 3;
+  ctx.shadowColor = "#1d4ed8";
+  ctx.shadowBlur = 12;
   ctx.strokeRect(12, 12, width - 24, height - 24);
   ctx.shadowBlur = 0; // Reset shadow
 
   // Inner Border Accent
-  ctx.strokeStyle = "rgba(0, 132, 255, 0.4)";
+  ctx.strokeStyle = "rgba(59, 130, 246, 0.3)";
   ctx.lineWidth = 1;
   ctx.strokeRect(20, 20, width - 40, height - 40);
 
   // Header Brand
-  ctx.fillStyle = "#00F0FF";
+  ctx.fillStyle = "#93c5fd";
   ctx.font = "bold 13px system-ui, sans-serif";
   ctx.fillText("PEC ACM STUDENT CHAPTER • COMPUTING STUDENT SOCIETY", 40, 55);
 
