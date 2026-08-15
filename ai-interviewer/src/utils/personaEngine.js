@@ -1,30 +1,82 @@
-// Intelligent AI Persona Analysis & Strategic Feedback Engine for PEC ACM Student Chapter
+// Intelligent AI Persona Analysis & Deterministic Scoring Engine for PEC ACM Student Chapter
 
 /**
- * Checks if an input string is gibberish, filler, keyboard mash, or too low-effort.
+ * Deterministic Backend Title Registry (Rule-based, NEVER AI Hallucinated)
+ */
+export const DETERMINISTIC_TITLES = {
+  "ACM-Dev": [
+    { minScore: 85, title: "Full-Stack Systems Architect", description: "You design scalable software architectures and turn complex ideas into robust, functioning systems." },
+    { minScore: 70, title: "Full-Stack Product Engineer", description: "You excel at building end-to-end practical digital applications that solve immediate campus bottlenecks." },
+    { minScore: 50, title: "Dev Ecosystem Specialist", description: "You demonstrate hands-on software intuition, prioritizing practical tooling, APIs, and usability." },
+    { minScore: 1,  title: "Emerging Software Builder", description: "You possess a builder's instinct ready to be sharpened through live projects in the ACM Dev Wing." }
+  ],
+  "ACM-CP": [
+    { minScore: 85, title: "Algorithmic Grandmaster", description: "You dissect complex logistics with mathematical precision, constraint optimization, and asymptotic efficiency." },
+    { minScore: 70, title: "Optimization Strategist", description: "You approach challenges by breaking them into priority queues, edge cases, and high-efficiency workflows." },
+    { minScore: 50, title: "Logic & Edge-Case Specialist", description: "You demonstrate sharp structural reasoning and look for systematic bottlenecks before implementing solutions." },
+    { minScore: 1,  title: "Emerging Problem Solver", description: "You have strong analytical curiosity ready to master competitive programming patterns in the ACM CP Wing." }
+  ],
+  "ACM-AI": [
+    { minScore: 85, title: "Neural Systems Architect", description: "You think in automated pipelines, computer vision, and machine intelligence models to modernize campus workflows." },
+    { minScore: 70, title: "Machine Intelligence Specialist", description: "You harness predictive data, intelligent pattern recognition, and smart automation for real-world impact." },
+    { minScore: 50, title: "Applied AI Innovator", description: "You identify key opportunities to integrate smart assistants, intelligent filters, and data telemetry into everyday tasks." },
+    { minScore: 1,  title: "Emerging Data Visionary", description: "You show great enthusiasm for AI/ML and automated intelligence within the ACM AI Wing." }
+  ]
+};
+
+export function getDeterministicTitle(wing, score, isAllGibberish = false, isPolymath = false) {
+  if (isAllGibberish) {
+    return {
+      title: "Unassessed Candidate (No Valid Attempt)",
+      description: "No technical logic was provided. Submit thoughtful, structured solutions to unlock your official ACM Wing recommendation."
+    };
+  }
+
+  if (isPolymath && score >= 80) {
+    return {
+      title: "Full-Spectrum Tech Pioneer",
+      description: "You exhibit a rare balance across Algorithmic Optimization, Machine Intelligence, and Full-Stack Engineering."
+    };
+  }
+
+  const wingList = DETERMINISTIC_TITLES[wing] || DETERMINISTIC_TITLES["ACM-Dev"];
+  for (const item of wingList) {
+    if (score >= item.minScore) {
+      return { title: item.title, description: item.description };
+    }
+  }
+
+  return {
+    title: wingList[wingList.length - 1].title,
+    description: wingList[wingList.length - 1].description
+  };
+}
+
+/**
+ * Checks if an input string is gibberish, filler, keyboard mash, "idk", or low-effort.
  */
 export function detectGibberishOrLowEffort(text) {
   if (!text || typeof text !== "string") return { isGibberish: true, reason: "empty" };
   const trimmed = text.trim();
-  if (trimmed.length < 4) return { isGibberish: true, reason: "too_short" };
+  if (trimmed.length < 3) return { isGibberish: true, reason: "too_short" };
 
   const lower = trimmed.toLowerCase();
 
-  // Known repetitive filler words
+  // Known repetitive filler words & "idk" expressions
   const fillerPatterns = [
-    /^([a-z])\1{3,}$/i, // aaaa, zzzz
-    /^(blah\s*)+$/i,    // blah, blah blah, blah blah blah
-    /^(na\s*)+$/i,      // na na na
-    /^(la\s*)+$/i,      // la la la
-    /^(ha\s*)+$/i,      // haha haha
-    /^(da\s*)+$/i,      // da da da
-    /^(yo\s*)+$/i,      // yo yo
-    /^(test\s*)+$/i,    // test test
-    /^(asdf\s*)+$/i,    // asdf
-    /^(qwerty\s*)+$/i,  // qwerty
-    /^(xyz\s*)+$/i,     // xyz
-    /^(abc\s*)+$/i,     // abc
-    /^(idk|dont know|dunno|nothing|none|no|yes|ok|okay|skip|pass)$/i
+    /^([a-z])\1{2,}$/i, // aaa, zzzz
+    /^(blah\s*)+$/i,
+    /^(na\s*)+$/i,
+    /^(la\s*)+$/i,
+    /^(ha\s*)+$/i,
+    /^(da\s*)+$/i,
+    /^(yo\s*)+$/i,
+    /^(test\s*)+$/i,
+    /^(asdf\s*)+$/i,
+    /^(qwerty\s*)+$/i,
+    /^(xyz\s*)+$/i,
+    /^(abc\s*)+$/i,
+    /^(idk|dont know|dunno|nothing|none|no|yes|ok|okay|skip|pass|nope|not sure|n\/a|idk bro|i dont know|i do not know|no idea|cant say|can not say)$/i
   ];
 
   for (const pattern of fillerPatterns) {
@@ -33,15 +85,32 @@ export function detectGibberishOrLowEffort(text) {
     }
   }
 
-  // Check character diversity (e.g. keyboard spam like "asdfghjk" or "qweqweqwe")
+  // Exact check for common unhelpful phrases
+  if (
+    lower === "idk" ||
+    lower.startsWith("i dont know") ||
+    lower.startsWith("i don't know") ||
+    lower.startsWith("no idea") ||
+    lower === "dont know" ||
+    lower === "dunno" ||
+    lower === "asdf" ||
+    lower === "qwerty" ||
+    lower === "testing" ||
+    lower === "..." ||
+    lower === "n/a"
+  ) {
+    return { isGibberish: true, reason: "idk_phrase" };
+  }
+
+  // Check character diversity (keyboard spam like "asdfghjk" or "qweqweqwe")
   const uniqueChars = new Set(lower.replace(/\s+/g, "").split(""));
-  if (trimmed.length >= 8 && uniqueChars.size <= 3) {
+  if (trimmed.length >= 7 && uniqueChars.size <= 3) {
     return { isGibberish: true, reason: "low_char_diversity" };
   }
 
-  // Word count check
+  // Single very short word
   const words = trimmed.split(/\s+/).filter(Boolean);
-  if (words.length === 1 && trimmed.length < 6) {
+  if (words.length === 1 && trimmed.length < 5) {
     return { isGibberish: true, reason: "single_short_word" };
   }
 
@@ -49,126 +118,105 @@ export function detectGibberishOrLowEffort(text) {
 }
 
 /**
- * Detects if an answer is completely mismatched to the question scenario.
- * e.g., answering "sprint 2 km" to a question about "building an AI robot/gadget".
+ * Detects if an answer is completely mismatched or irrelevant to the technical problem.
  */
-export function detectOffTopic(questionText, answerText, questionNumber) {
+export function detectOffTopic(questionText, answerText) {
   const lowerAns = (answerText || "").toLowerCase();
-  const lowerQ = (questionText || "").toLowerCase();
+  const trimmed = lowerAns.trim();
 
-  if (questionNumber === 2) {
-    // Question 2 asks to build a robot / AI gadget / automation tool
-    const isCommuteOnly = 
-      (lowerAns.includes("run") || lowerAns.includes("sprint") || lowerAns.includes("walk") || lowerAns.includes("balcony") || lowerAns.includes("auto")) &&
-      !lowerAns.includes("robot") && !lowerAns.includes("ai") && !lowerAns.includes("app") && !lowerAns.includes("bot") && 
-      !lowerAns.includes("device") && !lowerAns.includes("tool") && !lowerAns.includes("sensor") && !lowerAns.includes("camera") &&
-      !lowerAns.includes("scan") && !lowerAns.includes("automate") && !lowerAns.includes("code");
+  // If the user answers completely irrelevant gibberish
+  if (trimmed.length < 5) return { isOffTopic: false };
 
-    if (isCommuteOnly) {
-      return {
-        isOffTopic: true,
-        issue: "You provided a physical escape/sprint action instead of designing an AI tool or robot."
-      };
-    }
+  // If answer discusses unrelated personal activities with zero logic
+  const isCompletelyUnrelated = 
+    (lowerAns.includes("movie") || lowerAns.includes("cricket") || lowerAns.includes("pubg") || lowerAns.includes("song")) &&
+    !lowerAns.includes("app") && !lowerAns.includes("system") && !lowerAns.includes("queue") && !lowerAns.includes("data");
+
+  if (isCompletelyUnrelated) {
+    return {
+      isOffTopic: true,
+      issue: "The response discusses unrelated topics instead of proposing a systematic solution."
+    };
   }
 
   return { isOffTopic: false };
 }
 
 /**
- * Intelligent Question-by-Question Feedback Generator
- * Strictly evaluates:
- * 1. Gibberish / Low-effort (Calls it out & gives proper solution)
- * 2. Off-topic (Corrects the concept into an engineering proposal)
- * 3. Valid Attempt (Identifies specific strengths + provides higher-level engineering optimization)
+ * Intelligent Question-by-Question Feedback Generator for Real-Life Scenarios
  */
 export function generateQuestionFeedback(questionText, answerText, questionNumber, wing) {
   const ans = (answerText || "").trim();
   const lowerAns = ans.toLowerCase();
   const lowerQ = (questionText || "").toLowerCase();
 
-  // 1. GIBBERISH / FILLER DETECTION
+  // 1. GIBBERISH / FILLER / IDK DETECTION -> STRICT ZERO SCORE FEEDBACK
   const gibberishCheck = detectGibberishOrLowEffort(ans);
   if (gibberishCheck.isGibberish) {
+    let idealDemo = "";
     if (questionNumber === 1) {
-      let recommendedSolution = "For this crisis, a logical student strategy is: either slipping out quietly when the professor writes on the board, using an improvised mechanical lever (like a card/pin) on a jammed lock, or taking an electric auto detour through Sector 11 to avoid traffic.";
-      if (lowerQ.includes("lecture") || lowerQ.includes("hall") || lowerQ.includes("wrong")) {
-        recommendedSolution = "To escape a locked 4th-year lecture hall unnoticed: wait for the professor to turn to the blackboard and quietly slip out through the back door, or raise your hand and politely excuse yourself citing a mandatory laboratory clash.";
-      } else if (lowerQ.includes("lock") || lowerQ.includes("door")) {
-        recommendedSolution = "To escape a jammed door in under 10 minutes: use mechanical leverage with a plastic card or hairpin on the latch, or check if the adjacent balcony partition is accessible.";
-      } else if (lowerQ.includes("traffic") || lowerQ.includes("ctu") || lowerQ.includes("scooter")) {
-        recommendedSolution = "To reach PEC before the 75% attendance cutoff: disembark the stuck CTU bus immediately, take an electric auto shortcut through the Sector 11/15 interior grid, and message your CR with a live transit timestamp.";
-      }
-
-      return {
-        questionTitle: "Scenario 1: Crisis & Attendance Strategy",
-        questionText,
-        userAnswer: ans || "(No coherent answer provided)",
-        status: "GIBBERISH",
-        focusBadge: "⚠️ Incoherent / Filler Answer",
-        badgeStyle: "bg-red-950/60 border-red-500/40 text-red-300",
-        thoughtCorrectly: `❌ No engineering logic detected: You entered "${ans || 'empty text'}", which is meaningless filler and does not attempt to solve the crisis. Under real campus constraints, random input results in missed attendance.`,
-        betterWay: `💡 What a logical solution looks like: ${recommendedSolution}`
-      };
+      idealDemo = "A solid engineering breakdown: 1) Deploy a mobile pre-ordering token queue (FIFO / priority-based), 2) Split food counters into Express (pre-packaged) vs Prep (custom orders) to reduce queue wait time, 3) Display live digital queue estimates on a student portal.";
     } else {
-      return {
-        questionTitle: "Scenario 2: Innovation & Automation Strategy",
-        questionText,
-        userAnswer: ans || "(No coherent answer provided)",
-        status: "GIBBERISH",
-        focusBadge: "⚠️ Incoherent / Filler Answer",
-        badgeStyle: "bg-red-950/60 border-red-500/40 text-red-300",
-        thoughtCorrectly: `❌ No engineering concept detected: You entered "${ans || 'empty text'}". Designing tech solutions requires defining a real problem and proposing a concrete mechanism.`,
-        betterWay: `💡 What a strong AI project proposal looks like: Propose a concrete tool such as: an Edge-AI Computer Vision scanner for mess food freshness, a BLE Beacon network predicting CTU bus seat availability, or an automated speech-to-text transcript bot for 8 AM lectures.`
-      };
+      idealDemo = "A viable intelligent architecture: 1) Edge IoT sensors or overhead PIR sensors measuring space/device occupancy, 2) Fast API microservice processing live state telemetry, 3) Real-time mobile dashboard giving students instant vacant desk recommendations without capturing personal camera footage.";
     }
+
+    return {
+      questionTitle: questionNumber === 1 ? "Scenario 1: Optimization & Workflow Strategy" : "Scenario 2: Intelligent Systems Architecture",
+      questionText,
+      userAnswer: ans || "(No answer provided)",
+      status: "GIBBERISH",
+      focusBadge: "⚠️ No Score (0%): Filler / IDK Detected",
+      badgeStyle: "bg-red-950/60 border-red-500/40 text-red-300",
+      thoughtCorrectly: `❌ No technical score awarded (0%): You entered "${ans || 'blank text'}", which provides no structured logic or problem-solving attempt. In technical evaluations, answers must outline an approach to earn domain points.`,
+      betterWay: `💡 How an engineer solves this scenario: ${idealDemo}`
+    };
   }
 
   // 2. OFF-TOPIC CONCEPT DETECTION
-  const offTopicCheck = detectOffTopic(questionText, ans, questionNumber);
+  const offTopicCheck = detectOffTopic(questionText, ans);
   if (offTopicCheck.isOffTopic) {
     return {
-      questionTitle: "Scenario 2: Innovation & Automation Strategy",
+      questionTitle: questionNumber === 1 ? "Scenario 1: Optimization & Workflow Strategy" : "Scenario 2: Intelligent Systems Architecture",
       questionText,
       userAnswer: ans,
       status: "OFF_TOPIC",
       focusBadge: "⚠️ Concept Mismatch (Off-Topic)",
       badgeStyle: "bg-amber-950/60 border-amber-500/40 text-amber-300",
-      thoughtCorrectly: `⚠️ Misaligned concept: You suggested "${ans}", which is a manual physical commute action rather than an AI tool or automation gadget for PEC.`,
-      betterWay: `💡 How to transform this into an actual AI project: Instead of physically running to L-Block, you could propose an Autonomous Campus Dispatcher Bot or a Real-time Transit Queue App using GPS telemetry to automate student arrivals.`
+      thoughtCorrectly: `⚠️ Concept mismatch (Low score awarded): Your answer "${ans}" does not address the core constraints and objectives of this technical scenario.`,
+      betterWay: `💡 Reframing into an engineering solution: Focus on the bottleneck (e.g. queue delays or resource shortages) and propose a clear, step-by-step logic, mobile tool, or sensor mechanism.`
     };
   }
 
-  // 3. LEGITIMATE ATTEMPT EVALUATION (Tailored to their actual answer)
+  // 3. LEGITIMATE ATTEMPT EVALUATION (Tailored to real-life technical thinking)
   if (questionNumber === 1) {
-    let focusBadge = "Pragmatic Problem Solving";
+    let focusBadge = "Algorithmic & Queuing Logic";
     let thoughtCorrectly = "";
     let betterWay = "";
 
-    if (lowerAns.includes("blackboard") || lowerAns.includes("quiet") || lowerAns.includes("slip") || lowerAns.includes("back door") || lowerAns.includes("stealth") || lowerAns.includes("crawl") || lowerAns.includes("hide")) {
-      focusBadge = "Stealth & Timing Optimization";
-      thoughtCorrectly = `You identified the critical timing window: capitalizing on the professor's divided attention (e.g. when facing the board) to exit with zero disruption.`;
-      betterWay = `To execute this cleanly: check if the rear door has an audible latch before moving, and if caught, have a calm pre-planned excuse (e.g. misread timetable room number) to neutralize disciplinary friction.`;
-    } else if (lowerAns.includes("excuse") || lowerAns.includes("washroom") || lowerAns.includes("water") || lowerAns.includes("medical") || lowerAns.includes("hand") || lowerAns.includes("sir") || lowerAns.includes("ma'am") || lowerAns.includes("teacher")) {
-      focusBadge = "Diplomatic Conflict Resolution";
-      thoughtCorrectly = `You chose transparency and diplomatic communication rather than risking a clumsy stealth exit, preserving professional decorum.`;
-      betterWay = `To make this smoother: state a specific time-sensitive academic conflict (such as "I have a scheduled lab evaluation in L-Block starting right now") rather than a generic washroom excuse, making faculty permission instantaneous.`;
-    } else if (lowerAns.includes("auto") || lowerAns.includes("cab") || lowerAns.includes("scooter") || lowerAns.includes("sprint") || lowerAns.includes("shortcut") || lowerAns.includes("sector 11")) {
-      focusBadge = "Rapid Transit & Decisive Action";
-      thoughtCorrectly = `You recognized that breaking through traffic bottlenecks requires immediate alternate routing rather than waiting passively in queue.`;
-      betterWay = `A superior engineering setup: connect to automated Chandigarh Smart City traffic telemetry feeds via WhatsApp bot to dynamically calculate fastest green corridors before you reach congested roundabouts.`;
-    } else if (lowerAns.includes("card") || lowerAns.includes("pin") || lowerAns.includes("scale") || lowerAns.includes("screwdriver") || lowerAns.includes("balcony") || lowerAns.includes("lock")) {
-      focusBadge = "Mechanical Resourcefulness";
-      thoughtCorrectly = `You showed quick hands-on mechanical intuition by looking for physical leverage on the lock mechanism.`;
-      betterWay = `While physical lock bypassing works in emergencies, modern hostel locks are often reinforced. A safer engineering contingency is setting up a smart BLE emergency override module on your room latch.`;
+    if (lowerAns.includes("token") || lowerAns.includes("queue") || lowerAns.includes("slot") || lowerAns.includes("fifo") || lowerAns.includes("priority") || lowerAns.includes("pre-order") || lowerAns.includes("qr")) {
+      focusBadge = "Queuing Theory & Load Balancing";
+      thoughtCorrectly = `You correctly identified the bottleneck as a concurrency / load problem and applied queuing or pre-ordering principles to distribute peak demand.`;
+      betterWay = `To elevate this to production grade: Implement a dynamic priority queue (e.g. prioritizing students with imminent classes) and separate pickup lines for hot food vs cold beverages to optimize throughput.`;
+    } else if (lowerAns.includes("app") || lowerAns.includes("qr code") || lowerAns.includes("website") || lowerAns.includes("portal") || lowerAns.includes("kiosk") || lowerAns.includes("notify") || lowerAns.includes("alert")) {
+      focusBadge = "Digital Systems Workflow";
+      thoughtCorrectly = `You recognized that manual handling is the main bottleneck and proposed digitizing order capture and status notifications.`;
+      betterWay = `Consider adding real-time push notifications when an order is 2 minutes away from completion, preventing counter overcrowding.`;
+    } else if (lowerAns.includes("route") || lowerAns.includes("shuttle") || lowerAns.includes("schedule") || lowerAns.includes("track") || lowerAns.includes("bus") || lowerAns.includes("gps")) {
+      focusBadge = "Transit Optimization & Routing";
+      thoughtCorrectly = `You analyzed transit delays as a resource allocation problem and focused on optimizing route frequency and student arrival timings.`;
+      betterWay = `Introduce live GPS telemetry and dynamic stop skipping during peak hours to prioritize high-congestion hubs like L-Block and Central Library.`;
+    } else if (lowerAns.includes("match") || lowerAns.includes("skill") || lowerAns.includes("filter") || lowerAns.includes("tag") || lowerAns.includes("mentor") || lowerAns.includes("database")) {
+      focusBadge = "Algorithmic Matchmaking";
+      thoughtCorrectly = `You structured team and mentor scheduling as a constraint satisfaction problem, matching complementary skill tags.`;
+      betterWay = `Incorporate an automated bipartite matching algorithm with time-slot intervals to guarantee zero double-booking for mentors.`;
     } else {
-      focusBadge = "Adaptive Crisis Action";
-      thoughtCorrectly = `You proposed "${ans}", demonstrating intent to take immediate action under time pressure.`;
-      betterWay = `To level up this strategy: integrate predictive contingency planning — keeping verified campus contact numbers and alternative entry route maps ready before emergencies arise.`;
+      focusBadge = "Pragmatic Problem Solving";
+      thoughtCorrectly = `You proposed "${ans}", taking direct aim at simplifying operational friction.`;
+      betterWay = `To refine this: Break your solution into 3 structured layers: Input ingestion (how data is captured), Processing logic (how priority/queues are handled), and Output dispatch (how users receive the result).`;
     }
 
     return {
-      questionTitle: "Scenario 1: Crisis & Attendance Strategy",
+      questionTitle: "Scenario 1: Optimization & Workflow Strategy",
       questionText,
       userAnswer: ans,
       status: "VALID",
@@ -179,34 +227,34 @@ export function generateQuestionFeedback(questionText, answerText, questionNumbe
     };
   } else {
     // SCENARIO 2
-    let focusBadge = "Campus Innovation";
+    let focusBadge = "Smart Systems Architecture";
     let thoughtCorrectly = "";
     let betterWay = "";
 
-    if (lowerAns.includes("food") || lowerAns.includes("mess") || lowerAns.includes("paneer") || lowerAns.includes("canteen")) {
-      focusBadge = "Computer Vision & Quality Assurance";
-      thoughtCorrectly = `You accurately targeted one of the highest-impact daily student grievances — food quality and mess monitoring.`;
-      betterWay = `To make this hackathon-ready: architect it as an Edge-AI setup with a Raspberry Pi + camera running a fine-tuned YOLOv8 classification model, logging live freshness scores directly to a public student dashboard.`;
-    } else if (lowerAns.includes("attendance") || lowerAns.includes("8 am") || lowerAns.includes("lecture") || lowerAns.includes("audio") || lowerAns.includes("notes") || lowerAns.includes("summary")) {
-      focusBadge = "Speech-to-Text & Academic Automation";
-      thoughtCorrectly = `You focused on reclaiming lost study time caused by morning lecture fatigue and manual note-taking.`;
-      betterWay = `Elevate this into an autonomous classroom recorder using Whisper API and local LLMs to generate structured Markdown summaries and revision flashcards immediately after the professor finishes speaking.`;
-    } else if (lowerAns.includes("bus") || lowerAns.includes("ctu") || lowerAns.includes("seat") || lowerAns.includes("traffic")) {
-      focusBadge = "Crowd Density & Transit Telemetry";
-      thoughtCorrectly = `You addressed the major transit predictability bottleneck faced by Day Scholars travelling across the tricity.`;
-      betterWay = `Build a crowd-density sensor network utilizing BLE beacon packet sniffing on student smartphones, providing real-time empty seat estimations without installing expensive hardware on buses.`;
-    } else if (lowerAns.includes("library") || lowerAns.includes("seat") || lowerAns.includes("study") || lowerAns.includes("table")) {
-      focusBadge = "IoT Resource Allocation";
-      thoughtCorrectly = `You pinpointed the severe workspace availability constraint students face during examination weeks.`;
-      betterWay = `Implement a passive infrared (PIR) / thermal desk sensor grid that syncs with a Telegram bot, enabling 15-minute seat reservations and preventing unfair manual hoarding.`;
+    if (lowerAns.includes("ai") || lowerAns.includes("ocr") || lowerAns.includes("summarize") || lowerAns.includes("notes") || lowerAns.includes("slides") || lowerAns.includes("pyq") || lowerAns.includes("rag") || lowerAns.includes("bot") || lowerAns.includes("search")) {
+      focusBadge = "NLP & Knowledge Intelligence";
+      thoughtCorrectly = `You leveraged AI document processing and semantic search to convert unstructured academic materials into actionable study summaries.`;
+      betterWay = `To build a high-performance system: Use a RAG (Retrieval-Augmented Generation) pipeline with vector embeddings and an automated flashcard generator for rapid exam revision.`;
+    } else if (lowerAns.includes("sensor") || lowerAns.includes("camera") || lowerAns.includes("vision") || lowerAns.includes("seat") || lowerAns.includes("library") || lowerAns.includes("occupancy") || lowerAns.includes("iot") || lowerAns.includes("detect")) {
+      focusBadge = "Computer Vision & IoT Telemetry";
+      thoughtCorrectly = `You tackled the space availability challenge using automated presence detection without relying on tedious manual check-ins.`;
+      betterWay = `To protect privacy and minimize server costs: Run lightweight edge-AI object detection (like YOLO on Raspberry Pi/microcontroller) that sends only anonymized seat count numbers rather than raw video feeds.`;
+    } else if (lowerAns.includes("food") || lowerAns.includes("freshness") || lowerAns.includes("mess") || lowerAns.includes("quality") || lowerAns.includes("waste") || lowerAns.includes("feedback") || lowerAns.includes("rating")) {
+      focusBadge = "Automated Quality Assurance";
+      thoughtCorrectly = `You designed an automated feedback and monitoring pipeline to bring transparency to hostel operations and reduce waste.`;
+      betterWay = `Combine daily meal consumption forecasting using historical attendance data with an automated image-based food quality audit log.`;
+    } else if (lowerAns.includes("power") || lowerAns.includes("energy") || lowerAns.includes("light") || lowerAns.includes("ac") || lowerAns.includes("pir") || lowerAns.includes("schedule") || lowerAns.includes("timer")) {
+      focusBadge = "Smart Automation & Energy IoT";
+      thoughtCorrectly = `You recognized energy waste as an automation challenge and proposed sensor/schedule-driven power control.`;
+      betterWay = `Integrate an override safety switch for specialized lab equipment and use ambient light + motion multi-sensor triggers before toggling main power relays.`;
     } else {
-      focusBadge = "Applied Tech Engineering";
-      thoughtCorrectly = `You proposed "${ans}", identifying a real area where automation can streamline campus life.`;
-      betterWay = `To make this project viable for an ACM grant: structure it with a clean microservices architecture (FastAPI backend, React frontend, and IoT edge hardware) with clear latency benchmarks.`;
+      focusBadge = "Applied Systems Engineering";
+      thoughtCorrectly = `You proposed "${ans}", identifying a practical automation need in campus systems.`;
+      betterWay = `Structure your solution with clear decoupled components: a lightweight frontend interface, a resilient API service, and a data persistence store with low latency.`;
     }
 
     return {
-      questionTitle: "Scenario 2: Innovation & Automation Strategy",
+      questionTitle: "Scenario 2: Intelligent Systems Architecture",
       questionText,
       userAnswer: ans,
       status: "VALID",
@@ -219,7 +267,7 @@ export function generateQuestionFeedback(questionText, answerText, questionNumbe
 }
 
 /**
- * Main Persona Calculator
+ * Main Persona Calculator with Strict 0-Score Enforcement for Gibberish/IDK
  */
 export function calculatePersona({ name, branch, answer1, answer2, scenario1, scenario2 }) {
   const text1 = (answer1 || "").trim();
@@ -230,117 +278,145 @@ export function calculatePersona({ name, branch, answer1, answer2, scenario1, sc
 
   const g1 = detectGibberishOrLowEffort(text1);
   const g2 = detectGibberishOrLowEffort(text2);
-  const o2 = detectOffTopic(scenario2, text2, 2);
+  const o1 = detectOffTopic(scenario1, text1);
+  const o2 = detectOffTopic(scenario2, text2);
 
-  // 1. Keyword Vectors for Scoring
+  // Both gibberish/idk -> ABSOLUTE 0 MARKS
+  if (g1.isGibberish && g2.isGibberish) {
+    const feedbackQ1 = generateQuestionFeedback(scenario1, text1, 1, "ACM-Dev");
+    const feedbackQ2 = generateQuestionFeedback(scenario2, text2, 2, "ACM-Dev");
+    const titleObj = getDeterministicTitle("ACM-Dev", 0, true, false);
+
+    return {
+      name: name || "PEC Student",
+      branch: branch || "PEC Chandigarh",
+      personaTitle: titleObj.title,
+      recommendedWing: "ACM-Dev",
+      wingDescription: titleObj.description,
+      cpScore: 0,
+      aiScore: 0,
+      devScore: 0,
+      hostelSurvival: 0,
+      chaosIq: 0,
+      lockComment: "No valid problem-solving logic was entered for Scenario 1.",
+      robotComment: "No valid problem-solving logic was entered for Scenario 2.",
+      feedbackQ1,
+      feedbackQ2,
+      superpower: "Needs technical re-evaluation with concrete problem-solving input.",
+      timestamp: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    };
+  }
+
+  // Keywords for domain vector matching
   const cpKeywords = [
-    "o(1)", "logic", "algorithm", "binary", "shortcut", "optimal", "fast", "speed", 
-    "path", "efficient", "tree", "matrix", "codeforces", "icpc", "dp", "greedy", "stealth", "timing"
+    "algorithm", "logic", "queue", "priority", "fifo", "optimal", "optimize", "fast",
+    "efficiency", "sorting", "binary", "tree", "matrix", "bottleneck", "edge case", "latency",
+    "speed", "shortcut", "step-by-step", "allocation", "schedule", "concurrency"
   ];
 
   const aiKeywords = [
-    "ai", "robot", "ml", "neural", "smart", "sensor", "detect", "vision", "camera", 
-    "automated", "machine learning", "scan", "quality", "analyze", "gpt", "model", "predict", "freshness"
+    "ai", "ml", "machine learning", "model", "smart", "neural", "sensor", "detect",
+    "vision", "camera", "predict", "nlp", "ocr", "summarize", "flashcard", "rag",
+    "data", "intelligence", "automated", "analytics", "classification", "yolo"
   ];
 
   const devKeywords = [
-    "build", "hack", "app", "hardware", "iot", "rig", "tool", "lever", "door", "lock",
-    "fullstack", "script", "prototype", "system", "design", "mechanic", "diy", "wire", "device", "card", "pin"
+    "app", "web", "website", "portal", "system", "build", "frontend", "backend",
+    "api", "database", "dashboard", "kiosk", "qr", "qr code", "iot", "hardware",
+    "microservice", "notification", "interface", "server", "architecture", "tool"
   ];
 
-  let cpScore = 40;
-  let aiScore = 40;
-  let devScore = 40;
+  let cpScore = g1.isGibberish ? 0 : 45;
+  let aiScore = g2.isGibberish ? 0 : 45;
+  let devScore = (g1.isGibberish && g2.isGibberish) ? 0 : 45;
 
-  // Penalize gibberish strictly!
-  if (g1.isGibberish && g2.isGibberish) {
-    cpScore = 20 + Math.floor(Math.random() * 8);
-    aiScore = 20 + Math.floor(Math.random() * 8);
-    devScore = 20 + Math.floor(Math.random() * 8);
-  } else {
-    if (g1.isGibberish) cpScore -= 15;
-    if (g2.isGibberish) aiScore -= 15;
-    if (o2.isOffTopic) aiScore -= 10;
+  if (!g1.isGibberish || !g2.isGibberish) {
+    cpKeywords.forEach(k => { if (combined.includes(k)) cpScore += 10; });
+    aiKeywords.forEach(k => { if (combined.includes(k)) aiScore += 10; });
+    devKeywords.forEach(k => { if (combined.includes(k)) devScore += 10; });
 
-    cpKeywords.forEach(k => { if (combined.includes(k)) cpScore += 14; });
-    aiKeywords.forEach(k => { if (combined.includes(k)) aiScore += 14; });
-    devKeywords.forEach(k => { if (combined.includes(k)) devScore += 14; });
-
-    const bLower = (branch || "").toLowerCase();
-    if (bLower.includes("cse") || bLower.includes("computer")) {
-      cpScore += 8; devScore += 8;
-    } else if (bLower.includes("ai") || bLower.includes("data")) {
-      aiScore += 12;
-    } else if (bLower.includes("ece") || bLower.includes("ee") || bLower.includes("electric") || bLower.includes("mech")) {
-      devScore += 12;
+    // Word count / detail bonus for thoughtful freshers
+    const wordCount = combined.split(/\s+/).filter(Boolean).length;
+    if (wordCount > 25) {
+      cpScore += 8; aiScore += 8; devScore += 8;
+    }
+    if (wordCount > 50) {
+      cpScore += 6; aiScore += 6; devScore += 6;
     }
 
-    cpScore = Math.min(98, Math.max(30, cpScore));
-    aiScore = Math.min(98, Math.max(30, aiScore));
-    devScore = Math.min(98, Math.max(30, devScore));
+    // Branch aptitude baseline
+    const bLower = (branch || "").toLowerCase();
+    if (bLower.includes("cse") || bLower.includes("computer")) {
+      cpScore += 5; devScore += 5;
+    } else if (bLower.includes("ai") || bLower.includes("data")) {
+      aiScore += 8;
+    } else if (bLower.includes("ece") || bLower.includes("ee") || bLower.includes("mech") || bLower.includes("bdes")) {
+      devScore += 8;
+    }
+
+    // Penalize individual gibberish / off-topic
+    if (g1.isGibberish) {
+      cpScore = 0;
+      devScore = Math.floor(devScore * 0.5);
+    }
+    if (g2.isGibberish) {
+      aiScore = 0;
+      devScore = Math.floor(devScore * 0.5);
+    }
+    if (o1.isOffTopic) cpScore = Math.floor(cpScore * 0.4);
+    if (o2.isOffTopic) aiScore = Math.floor(aiScore * 0.4);
+
+    cpScore = Math.min(98, Math.max(0, cpScore));
+    aiScore = Math.min(98, Math.max(0, aiScore));
+    devScore = Math.min(98, Math.max(0, devScore));
   }
 
-  // Determine Title
+  // Determine Dominant Wing
   let recommendedWing = "ACM-Dev";
-  let personaTitle = "The Campus Pragmatist";
-  let wingDescription = "You focus on building practical tools to tackle real-world campus bottlenecks.";
+  let maxScore = devScore;
 
-  if (g1.isGibberish && g2.isGibberish) {
-    personaTitle = "The Enigmatic Lurker";
-    recommendedWing = "ACM-Dev";
-    wingDescription = "You tested the system with minimal input! Provide detailed technical logic to unlock your full ACM profile.";
-  } else if (cpScore >= aiScore && cpScore >= devScore) {
+  if (cpScore >= aiScore && cpScore >= devScore) {
     recommendedWing = "ACM-CP";
-    personaTitle = "The Algorithmic Strategist";
-    wingDescription = "You calculate optimal speed, analyze constraints, and solve emergencies with razor-sharp logic.";
+    maxScore = cpScore;
   } else if (aiScore >= cpScore && aiScore >= devScore) {
     recommendedWing = "ACM-AI";
-    personaTitle = "The AI Innovator";
-    wingDescription = "You think in automated systems and machine learning models to modernize campus workflows.";
+    maxScore = aiScore;
   } else {
     recommendedWing = "ACM-Dev";
-    personaTitle = "The Systems Architect";
-    wingDescription = "You turn ideas into functioning prototypes, bridging software and hands-on execution.";
+    maxScore = devScore;
   }
+
+  const isPolymath = Math.abs(cpScore - aiScore) <= 6 && Math.abs(aiScore - devScore) <= 6 && maxScore >= 75;
+  const titleObj = getDeterministicTitle(recommendedWing, maxScore, false, isPolymath);
 
   // Generate detailed question-by-question feedback
   const feedbackQ1 = generateQuestionFeedback(scenario1, text1, 1, recommendedWing);
   const feedbackQ2 = generateQuestionFeedback(scenario2, text2, 2, recommendedWing);
 
   // Quotes
-  let lockComment = `Evaluated scenario 1 approach for PEC campus survival.`;
-  let robotComment = `Evaluated scenario 2 tech proposal for ACM ecosystem.`;
+  let lockComment = `Scenario 1 logic: "${text1.substring(0, 50)}..."`;
+  let robotComment = `Scenario 2 architecture: "${text2.substring(0, 50)}..."`;
 
-  if (feedbackQ1.status === "GIBBERISH") {
-    lockComment = `Entered non-specific filler input for Scenario 1.`;
-  } else {
-    lockComment = `Addressed Scenario 1 with "${text1.substring(0, 45)}..."`;
-  }
-
-  if (feedbackQ2.status === "GIBBERISH") {
-    robotComment = `Entered non-specific filler input for Scenario 2.`;
-  } else if (feedbackQ2.status === "OFF_TOPIC") {
-    robotComment = `Proposed "${text2.substring(0, 45)}..." for Scenario 2.`;
-  } else {
-    robotComment = `Targeted campus automation with "${text2.substring(0, 45)}..."`;
-  }
+  if (g1.isGibberish) lockComment = `Non-responsive input for Scenario 1 (0 marks awarded).`;
+  if (g2.isGibberish) robotComment = `Non-responsive input for Scenario 2 (0 marks awarded).`;
 
   return {
     name: name || "PEC Student",
     branch: branch || "PEC Chandigarh",
-    personaTitle,
+    personaTitle: titleObj.title,
     recommendedWing,
-    wingDescription,
+    wingDescription: titleObj.description,
     cpScore,
     aiScore,
     devScore,
-    hostelSurvival: Math.min(99, Math.max(30, Math.floor((cpScore + devScore) / 2))),
-    chaosIq: Math.min(99, Math.max(30, Math.floor((aiScore + cpScore) / 2))),
+    hostelSurvival: Math.min(99, Math.max(0, Math.floor((cpScore + devScore) / 2))),
+    chaosIq: Math.min(99, Math.max(0, Math.floor((aiScore + cpScore) / 2))),
     lockComment,
     robotComment,
     feedbackQ1,
     feedbackQ2,
-    superpower: `Analyzed across CP, AI/ML, and Full-Stack problem vectors.`,
+    superpower: `Aptitude evaluated across Algorithmic Logic, Machine Intelligence & System Building.`,
     timestamp: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   };
 }
+

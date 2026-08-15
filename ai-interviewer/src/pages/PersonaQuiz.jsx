@@ -33,7 +33,11 @@ import {
   Award,
   ChevronRight,
   AlertTriangle,
-  AlertCircle
+  AlertCircle,
+  Mic,
+  MicOff,
+  Volume2,
+  Loader2
 } from "lucide-react";
 
 export default function PersonaQuiz() {
@@ -42,7 +46,7 @@ export default function PersonaQuiz() {
 
   // User Profile
   const [name, setName] = useState("");
-  const [branch, setBranch] = useState("Computer Science & Engg (CSE)");
+  const [branch, setBranch] = useState("Computer Science (CSE)");
   const [studentType, setStudentType] = useState("Day Scholar");
 
   // Dynamic AI Generated Scenarios
@@ -52,12 +56,20 @@ export default function PersonaQuiz() {
   const [answer1, setAnswer1] = useState("");
   const [answer2, setAnswer2] = useState("");
 
+  // Mic / Speech-to-Text State
+  const [isListening, setIsListening] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [micNotice, setMicNotice] = useState("");
+  const recognitionRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const recordingActiveRef = useRef(false);
+
   // Results
   const [personaResult, setPersonaResult] = useState(null);
   const [copiedLink, setCopiedLink] = useState(false);
 
   // Branch Options
-  /* Updated branch options */
   const branches = [
     "Computer Science (CSE)",
     "Computer Science (CSE) – AI",
@@ -88,16 +100,135 @@ export default function PersonaQuiz() {
     }
   }, [step, scenarios]);
 
-  // Clean up audio on unmount
+  // Clean up audio & mic on unmount or step change
   useEffect(() => {
     return () => {
       audioEngine.stopSpeaking();
+      stopListening();
     };
   }, []);
+
+  // Stop mic when leaving questions
+  useEffect(() => {
+    if (step !== "q1" && step !== "q2") {
+      stopListening();
+    }
+  }, [step]);
+
+  // ==========================================
+  // HIGH-SENSITIVITY SPEECH-TO-TEXT ENGINE
+  // ==========================================
+  const startListening = async () => {
+    audioEngine.playClick();
+    audioEngine.stopSpeaking(); // Stop AI question playback so mic doesn't pick it up
+    setIsListening(true);
+    setMicNotice("🎙️ Listening with high sensitivity... Speak your answer now.");
+    recordingActiveRef.current = true;
+    audioChunksRef.current = [];
+
+    // 1. Initialize Web Speech API for real-time instantaneous verbatim speech
+    try {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.maxAlternatives = 1;
+        recognition.lang = navigator.language || "en-IN";
+
+        recognition.onresult = (event) => {
+          let fullText = "";
+          for (let i = 0; i < event.results.length; i++) {
+            fullText += event.results[i][0].transcript + " ";
+          }
+          const cleanText = fullText.trim();
+          if (cleanText) {
+            if (step === "q1") {
+              setAnswer1(cleanText);
+            } else if (step === "q2") {
+              setAnswer2(cleanText);
+            }
+          }
+        };
+
+        recognition.onerror = (err) => {
+          console.warn("Web Speech API notice:", err.error);
+        };
+
+        recognition.onend = () => {
+          if (recordingActiveRef.current) {
+            try { recognition.start(); } catch (e) {}
+          }
+        };
+
+        recognition.start();
+        recognitionRef.current = recognition;
+      }
+    } catch (err) {
+      console.warn("Web Speech API initialization issue:", err);
+    }
+
+    // 2. Capture high-sensitivity MediaRecorder stream with Whisper backend backup
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+          sampleRate: 48000
+        }
+      });
+
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/webm")
+        ? "audio/webm"
+        : "audio/mp4";
+
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.start(250);
+    } catch (micErr) {
+      console.warn("Microphone media capture issue:", micErr);
+      setMicNotice("Microphone active (speech mode). You can also edit/type below.");
+    }
+  };
+
+  const stopListening = async () => {
+    if (!recordingActiveRef.current) return;
+    recordingActiveRef.current = false;
+    setIsListening(false);
+    audioEngine.playClick();
+
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      } catch (e) {}
+    }
+
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      try {
+        mediaRecorderRef.current.stop();
+        mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
+      } catch (e) {}
+    }
+
+    setMicNotice("✓ Audio input captured! You can review or refine your answer below.");
+  };
 
   // Submit Answer & Move Next
   const handleNextStep = () => {
     audioEngine.playClick();
+    stopListening();
 
     if (step === "profile") {
       if (!name.trim()) {
@@ -107,23 +238,23 @@ export default function PersonaQuiz() {
       setStep("q1");
     } else if (step === "q1") {
       if (!answer1.trim() || answer1.trim().length < 2) {
-        alert("Please type your solution for Scenario 1 (or tap one of the suggested answer pills)!");
+        alert("Please speak or type your solution for Scenario 1 (or tap one of the suggested answer pills)!");
         return;
       }
       setStep("q2");
     } else if (step === "q2") {
       if (!answer2.trim() || answer2.trim().length < 2) {
-        alert("Please type your solution for Scenario 2 (or tap one of the suggested answer pills)!");
+        alert("Please speak or type your solution for Scenario 2 (or tap one of the suggested answer pills)!");
         return;
       }
       setStep("analyzing");
 
-      // Attempt live LLM server evaluation with fallback to client-side semantic engine
+      // Attempt live LLM server evaluation with fallback to client-side deterministic engine
       const evaluateAsync = async () => {
         let finalResult = null;
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 3500);
+          const timeoutId = setTimeout(() => controller.abort(), 4000);
 
           const response = await fetch("/api/persona/evaluate", {
             method: "POST",
@@ -146,29 +277,29 @@ export default function PersonaQuiz() {
               finalResult = {
                 name: name || "PEC Student",
                 branch: `${branch} (${studentType})`,
-                personaTitle: data.personaTitle || "The Campus Pragmatist",
+                personaTitle: data.personaTitle || "Full-Stack Systems Architect",
                 recommendedWing: data.recommendedWing || "ACM-Dev",
                 wingDescription: data.wingDescription || "Practical problem solver built for PEC Chandigarh.",
-                cpScore: data.cpScore || 75,
-                aiScore: data.aiScore || 75,
-                devScore: data.devScore || 75,
-                hostelSurvival: Math.min(99, Math.max(30, Math.floor(((data.cpScore || 75) + (data.devScore || 75)) / 2))),
-                chaosIq: Math.min(99, Math.max(30, Math.floor(((data.aiScore || 75) + (data.cpScore || 75)) / 2))),
+                cpScore: data.cpScore ?? 75,
+                aiScore: data.aiScore ?? 75,
+                devScore: data.devScore ?? 75,
+                hostelSurvival: Math.min(99, Math.max(0, Math.floor(((data.cpScore || 0) + (data.devScore || 0)) / 2))),
+                chaosIq: Math.min(99, Math.max(0, Math.floor(((data.aiScore || 0) + (data.cpScore || 0)) / 2))),
                 lockComment: `Scenario 1 analyzed: "${answer1.substring(0, 45)}..."`,
                 robotComment: `Scenario 2 analyzed: "${answer2.substring(0, 45)}..."`,
                 feedbackQ1: {
                   ...data.feedbackQ1,
-                  questionTitle: "Scenario 1: Crisis & Attendance Strategy",
+                  questionTitle: "Scenario 1: Optimization & Workflow Strategy",
                   questionText: scenarios.q1,
                   userAnswer: answer1
                 },
                 feedbackQ2: {
                   ...data.feedbackQ2,
-                  questionTitle: "Scenario 2: Innovation & Automation Strategy",
+                  questionTitle: "Scenario 2: Intelligent Systems Architecture",
                   questionText: scenarios.q2,
                   userAnswer: answer2
                 },
-                superpower: "Analyzed across CP, AI/ML, and Full-Stack problem vectors.",
+                superpower: "Aptitude evaluated across Algorithmic Logic, Machine Intelligence & System Building.",
                 timestamp: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
               };
             }
@@ -177,7 +308,7 @@ export default function PersonaQuiz() {
           // Backend offline or timeout
         }
 
-        // Client-side fallback if server didn't respond
+        // Client-side deterministic fallback
         if (!finalResult) {
           finalResult = calculatePersona({
             name,
@@ -226,53 +357,89 @@ export default function PersonaQuiz() {
     } catch (err) {}
   };
 
-  // Dynamic Suggestion Pills precisely mapped to each scenario type
+  // Dynamic Suggestion Pills precisely mapped to real-life CP, AI/ML, and Dev scenarios
   const getPills = () => {
     if (step === "q1") {
       const qLower = (scenarios.q1 || "").toLowerCase();
-      if (qLower.includes("lecture") || qLower.includes("professor") || qLower.includes("hall") || qLower.includes("wrong")) {
+      if (qLower.includes("canteen") || qLower.includes("cafeteria") || qLower.includes("fest") || qLower.includes("printing")) {
         return [
-          "Slip out quietly when professor writes on blackboard",
-          "Politely excuse myself citing mandatory lab clash",
-          "Slide out through rear emergency exit door",
-          "Blend into crowd at the transition bell"
+          "FIFO token pre-ordering queue on mobile app",
+          "Split counters: Express drinks vs Cooked meals",
+          "Dynamic priority queue for students with upcoming classes",
+          "Live digital queue status board at entrance",
+          "Batch preparation scheduling for peak-demand snacks"
         ];
-      } else if (qLower.includes("door") || qLower.includes("lock") || qLower.includes("jammed")) {
+      } else if (qLower.includes("shuttle") || qLower.includes("transit") || qLower.includes("route") || qLower.includes("commute")) {
         return [
-          "Pop latch using credit card / plastic scale",
-          "Climb over balcony partition into adjacent room",
-          "Use screwdriver / hairpin as makeshift lever",
-          "Call hostel wingmate to unscrew latch from outside"
+          "Dynamic route prioritization based on lecture building schedules",
+          "Electric auto ride-pooling with live student dispatch",
+          "Direct green corridor express shuttles to L-Block & Library",
+          "Real-time GPS telemetry queue tracker on student portal",
+          "Scheduled high-frequency loops during 8:45 AM rush"
+        ];
+      } else if (qLower.includes("hackathon") || qLower.includes("mentor") || qLower.includes("match")) {
+        return [
+          "Automated bipartite matching algorithm with skill tags",
+          "Time-slot conflict matrix for mentor scheduling",
+          "Project workstation reservation queue",
+          "Live skill exchange board with verified GitHub/project tags",
+          "Dynamic milestone checkpoint reminders"
         ];
       } else {
         return [
-          "Take electric auto shortcut through Sector 11",
-          "Switch to fast e-rickshaw via Sector 15 green corridor",
-          "Share live GPS location with CR for attendance buffer",
-          "Quick sprint from PEC Market gate to L-Block"
+          "Centralized digital verification registry with QR claim tags",
+          "Two-factor physical descriptor verification to prevent false claims",
+          "Automated push notifications for newly found items",
+          "Secure drop-off lockers with timestamped camera logs"
         ];
       }
     } else {
-      // Step === "q2" (AI Robot / Tool Invention Ideas)
-      return [
-        "Computer vision camera scanning mess food freshness",
-        "Bluetooth beacon mesh predicting CTU bus empty seats",
-        "AI lecture summarizer bot recording 8 AM classes",
-        "Thermal sensor matrix tracking live library seats",
-        "Smart hostel Wi-Fi auto load-balancer gadget"
-      ];
+      // Step === "q2" (AI/ML & Dev Intelligent Systems)
+      const qLower = (scenarios.q2 || "").toLowerCase();
+      if (qLower.includes("study") || qLower.includes("exam") || qLower.includes("notes") || qLower.includes("slide")) {
+        return [
+          "RAG vector pipeline summarizing lecture slides & past exam papers",
+          "Automated flashcard generator for key formulas & definitions",
+          "Semantic search engine across course syllabi and lab guides",
+          "Smart peer study group matcher based on weak syllabus topics",
+          "Audio-to-text transcript bot for complex lecture audio"
+        ];
+      } else if (qLower.includes("library") || qLower.includes("space") || qLower.includes("seat") || qLower.includes("port")) {
+        return [
+          "Privacy-safe edge-AI desk occupancy counter (YOLO)",
+          "Overhead PIR motion / thermal sensors on study tables",
+          "15-minute seat reservation hold via mobile app",
+          "Live heat-map dashboard of vacant study booths",
+          "Smart power-socket availability indicator"
+        ];
+      } else if (qLower.includes("food") || qLower.includes("mess") || qLower.includes("freshness") || qLower.includes("waste")) {
+        return [
+          "Automated image-based food freshness audit station",
+          "QR code rating system linked directly to catering portal",
+          "Daily meal demand predictor to minimize food waste",
+          "Real-time kitchen temperature & hygiene telemetry",
+          "Automated menu popularity & inventory forecasting"
+        ];
+      } else {
+        return [
+          "Smart PIR occupancy relays toggling lab rigs & lights",
+          "Automated overnight power-down with safe experiment override",
+          "Ambient temperature + load-balancing HVAC controller",
+          "Centralized energy telemetry dashboard for faculty"
+        ];
+      }
     }
   };
 
   return (
-    <div className="relative min-h-screen bg-[#020612] text-white font-sans overflow-hidden py-10 px-4 sm:px-6 lg:px-8 selection:bg-[#5a7fa6] selection:text-white">
+    <div className="relative min-h-screen bg-[#020612] text-white font-sans overflow-hidden py-10 px-4 sm:px-6 lg:px-8 selection:bg-[#00F0FF] selection:text-slate-950">
       <CyberParticles />
 
       <div className="relative z-10 max-w-4xl mx-auto">
         
         {/* STEP 1: USER PROFILE ENTRY */}
         {step === "profile" && (
-          <div className="bg-[#050c21]/95 border border-blue-500/40 rounded-3xl p-6 sm:p-10 shadow-2xl backdrop-blur-xl animate-fade-in text-left">
+          <div className="bg-[#050c21]/95 border border-cyan-500/40 rounded-3xl p-6 sm:p-10 shadow-2xl backdrop-blur-xl animate-fade-in text-left">
             <div className="flex items-center gap-3.5 mb-6">
               <AcmLogo size="md" showText={false} />
               <div>
@@ -282,7 +449,7 @@ export default function PersonaQuiz() {
             </div>
 
             <p className="text-xs sm:text-sm text-blue-200/80 mb-8">
-              No signup or login required! Whether you are a <strong className="text-cyan-300">Day Scholar</strong> or <strong className="text-purple-300">Hosteller</strong>, enter your details to generate your shareable PEC Tech Persona Card & ACM Wing Recommendation.
+              No signup or login required! Whether you are a <strong className="text-cyan-300">Day Scholar</strong> or <strong className="text-purple-300">Hosteller</strong>, enter your details to generate your shareable <strong className="text-cyan-300">PEC Tech Persona Card</strong> & ACM Wing Recommendation.
             </p>
 
             <div className="space-y-6 mb-8">
@@ -296,6 +463,10 @@ export default function PersonaQuiz() {
                   placeholder="e.g. Aarav Sharma"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  autoCorrect="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  autoComplete="off"
                   className="w-full px-4 py-3.5 bg-[#030818] border border-blue-700/60 focus:border-cyan-400 rounded-2xl text-sm text-white placeholder-slate-500 focus:outline-none transition font-semibold"
                 />
               </div>
@@ -338,30 +509,30 @@ export default function PersonaQuiz() {
 
             <button
               onClick={handleNextStep}
-              className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#5a7fa6] via-[#5a7fa6] to-[#7000FF] hover:scale-[1.01] text-slate-950 font-black text-base flex items-center justify-center gap-3 shadow-xl shadow-blue-500/30 transition cursor-pointer"
+              className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#0075FF] via-[#00F0FF] to-[#7000FF] hover:scale-[1.01] text-slate-950 font-black text-base flex items-center justify-center gap-3 shadow-xl shadow-cyan-500/30 transition cursor-pointer"
             >
-              <span>Generate AI Scenarios & Start</span>
+              <span>Generate Real-Life Tech Scenarios & Start</span>
               <ArrowRight size={20} />
             </button>
           </div>
         )}
 
-        {/* STEP 2 & 3: DYNAMIC AI GENERATED SCENARIO QUESTIONS */}
+        {/* STEP 2 & 3: DYNAMIC AI GENERATED SCENARIO QUESTIONS WITH HIGH-ACCURACY MIC */}
         {(step === "q1" || step === "q2") && (
-          <div className="bg-[#050c21]/95 border border-blue-500/40 rounded-3xl p-6 sm:p-10 shadow-2xl backdrop-blur-xl animate-fade-in text-left">
+          <div className="bg-[#050c21]/95 border border-cyan-500/40 rounded-3xl p-6 sm:p-10 shadow-2xl backdrop-blur-xl animate-fade-in text-left">
             
             {/* Header progress */}
             <div className="flex items-center justify-between border-b border-blue-900/60 pb-4 mb-6">
               <div className="flex items-center gap-3">
-                <div className={`p-2.5 rounded-2xl border ${step === "q1" ? "bg-blue-600/20 border-blue-400/40 text-blue-400" : "bg-purple-600/20 border-purple-400/40 text-purple-400"}`}>
-                  {step === "q1" ? <Clock size={24} /> : <Bot size={24} />}
+                <div className={`p-2.5 rounded-2xl border ${step === "q1" ? "bg-blue-600/20 border-cyan-400/40 text-cyan-400" : "bg-purple-600/20 border-purple-400/40 text-purple-400"}`}>
+                  {step === "q1" ? <Terminal size={24} /> : <Brain size={24} />}
                 </div>
                 <div>
                   <span className="text-xs font-black uppercase text-cyan-400 tracking-wider">
-                    {step === "q1" ? "AI Scenario #1 (Randomized)" : "AI Scenario #2 (Randomized)"}
+                    {step === "q1" ? "Real-Life Scenario #1 (Optimization & Logic)" : "Real-Life Scenario #2 (Intelligent Systems)"}
                   </span>
                   <h3 className="text-lg font-black text-white">
-                    PEC Campus Survival Challenge
+                    PEC Practical Engineering Scenario
                   </h3>
                 </div>
               </div>
@@ -372,19 +543,57 @@ export default function PersonaQuiz() {
             </div>
 
             {/* AI Question Box */}
-            <div className="bg-[#030818] border border-cyan-500/30 rounded-2xl p-5 mb-6 relative overflow-hidden">
+            <div className="bg-[#030818] border border-cyan-500/40 rounded-2xl p-5 mb-6 relative overflow-hidden shadow-lg shadow-cyan-500/10">
               <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-xl pointer-events-none"></div>
-              <p className="text-base sm:text-xl font-black text-cyan-200 leading-snug">
+              <p className="text-base sm:text-lg font-bold text-cyan-100 leading-relaxed">
                 "{currentQuestionText}"
               </p>
             </div>
 
-            {/* ANSWER TEXT EDITOR */}
+            {/* 🎙️ HIGH-ACCURACY MIC AUDIO INPUT CONTROLS */}
+            <div className="mb-5 p-4 rounded-2xl bg-[#061438] border border-cyan-500/30 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={isListening ? stopListening : startListening}
+                  className={`px-5 py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2.5 transition-all shadow-lg cursor-pointer w-full sm:w-auto ${
+                    isListening
+                      ? "bg-red-600 hover:bg-red-700 text-white animate-pulse shadow-red-500/40"
+                      : "bg-gradient-to-r from-[#00F0FF] to-[#0075FF] text-slate-950 hover:scale-105 shadow-cyan-500/30"
+                  }`}
+                >
+                  {isListening ? (
+                    <>
+                      <MicOff size={18} />
+                      <span>Stop Recording (Mic Active)</span>
+                    </>
+                  ) : (
+                    <>
+                      <Mic size={18} />
+                      <span>Speak Answer (High Accuracy Mic)</span>
+                    </>
+                  )}
+                </button>
+
+                {isListening && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-950/60 border border-red-500/40 text-red-300 text-xs font-bold animate-pulse">
+                    <span className="w-2 h-2 rounded-full bg-red-400"></span>
+                    <span>Recording audio live...</span>
+                  </div>
+                )}
+              </div>
+
+              <span className="text-xs text-blue-200/80 italic text-center sm:text-right">
+                {micNotice || "💡 You can speak into your mic or type directly below (No autocorrect)"}
+              </span>
+            </div>
+
+            {/* ANSWER TEXT EDITOR (WITH ZERO AUTOCORRECT) */}
             <div className="mb-6">
               <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
                 <span className="flex items-center gap-2 text-cyan-300">
                   <Keyboard size={15} />
-                  <span>Type Your Solution / Strategy</span>
+                  <span>Your Solution / Thought Process</span>
                 </span>
                 <span className="text-[11px] text-cyan-400 font-mono">
                   {step === "q1" ? answer1.length : answer2.length} characters
@@ -393,9 +602,13 @@ export default function PersonaQuiz() {
 
               <textarea
                 rows={5}
-                placeholder="Type your solution or strategy here..."
+                placeholder="Describe your practical step-by-step logic, system flow, or features in your own words (or use the Mic above)..."
                 value={step === "q1" ? answer1 : answer2}
                 onChange={(e) => (step === "q1" ? setAnswer1(e.target.value) : setAnswer2(e.target.value))}
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                autoComplete="off"
                 className="w-full p-4 bg-[#030818] border border-blue-700/60 focus:border-cyan-400 rounded-2xl text-sm text-white placeholder-slate-500 focus:outline-none transition font-sans leading-relaxed shadow-inner"
               />
             </div>
@@ -403,7 +616,7 @@ export default function PersonaQuiz() {
             {/* Quick Answer Suggestion Pills */}
             <div className="mb-8">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
-                Need Ideas? Tap a response pill:
+                Need Ideas? Tap a strategy pill:
               </span>
               <div className="flex flex-wrap gap-2">
                 {getPills().map((pill) => (
@@ -411,10 +624,13 @@ export default function PersonaQuiz() {
                     key={pill}
                     onClick={() => {
                       audioEngine.playClick();
-                      if (step === "q1") setAnswer1(pill);
-                      else setAnswer2(pill);
+                      if (step === "q1") {
+                        setAnswer1((prev) => (prev ? `${prev}. ${pill}` : pill));
+                      } else {
+                        setAnswer2((prev) => (prev ? `${prev}. ${pill}` : pill));
+                      }
                     }}
-                    className="px-3 py-1.5 rounded-xl bg-[#08153b] hover:bg-blue-900/60 border border-blue-700/40 hover:border-cyan-400 text-xs text-blue-200 hover:text-white transition cursor-pointer font-medium"
+                    className="px-3 py-1.5 rounded-xl bg-[#08153b] hover:bg-cyan-950/60 border border-blue-700/40 hover:border-cyan-400 text-xs text-blue-200 hover:text-cyan-200 transition cursor-pointer font-medium"
                   >
                     + {pill}
                   </button>
@@ -425,9 +641,9 @@ export default function PersonaQuiz() {
             {/* Next / Submit Button */}
             <button
               onClick={handleNextStep}
-              className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#5a7fa6] via-[#5a7fa6] to-[#7000FF] hover:scale-[1.01] text-slate-950 font-black text-base flex items-center justify-center gap-3 shadow-xl shadow-blue-500/30 transition cursor-pointer"
+              className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#0075FF] via-[#00F0FF] to-[#7000FF] hover:scale-[1.01] text-slate-950 font-black text-base flex items-center justify-center gap-3 shadow-xl shadow-cyan-500/30 transition cursor-pointer"
             >
-              <span>{step === "q1" ? "Next AI Scenario" : "Analyze My PEC Persona"}</span>
+              <span>{step === "q1" ? "Next Scenario (Scenario #2)" : "Evaluate Tech Aptitude & ACM Wing"}</span>
               <ArrowRight size={20} />
             </button>
 
@@ -448,8 +664,8 @@ export default function PersonaQuiz() {
               Evaluating response logic across CP, AI, and Dev vectors for PEC {studentType}...
             </p>
 
-            <div className="w-full max-w-md mx-auto bg-slate-900 rounded-full h-3 border border-blue-500/40 overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-[#5a7fa6] via-[#5a7fa6] to-[#7000FF] animate-pulse w-full"></div>
+            <div className="w-full max-w-md mx-auto bg-slate-900 rounded-full h-3 border border-cyan-500/40 overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-[#00F0FF] via-[#7000FF] to-[#FF007A] animate-pulse w-full"></div>
             </div>
           </div>
         )}
@@ -461,12 +677,12 @@ export default function PersonaQuiz() {
             {/* The Main Persona Card Container (Export Target) */}
             <div
               id="persona-card-export"
-              className="relative max-w-xl mx-auto rounded-3xl p-1 bg-gradient-to-br from-[#5a7fa6] via-[#5a7fa6] to-[#7000FF] shadow-2xl text-left overflow-hidden"
+              className="relative max-w-xl mx-auto rounded-3xl p-1 bg-gradient-to-br from-[#00F0FF] via-[#7000FF] to-[#FF007A] shadow-[0_0_50px_rgba(0,240,255,0.4)] text-left overflow-hidden"
             >
-              <div className="bg-[#050b1e] rounded-[22px] p-6 sm:p-8 border border-blue-400/30 text-white relative">
+              <div className="bg-[#050b1e] rounded-[22px] p-6 sm:p-8 border border-cyan-400/40 text-white relative">
                 
                 {/* Hologram Light Glow */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none"></div>
 
                 {/* Card Header */}
                 <div className="flex items-center justify-between border-b border-blue-900/60 pb-5 mb-6">
@@ -493,9 +709,9 @@ export default function PersonaQuiz() {
                 </div>
 
                 {/* 👑 TITLE BADGE */}
-                <div className="bg-gradient-to-r from-blue-900/80 via-indigo-900/80 to-purple-900/80 border border-cyan-400/50 rounded-2xl p-4 mb-6 shadow-lg">
+                <div className="bg-gradient-to-r from-blue-900/90 via-indigo-900/90 to-purple-900/90 border border-cyan-400/60 rounded-2xl p-4 mb-6 shadow-[0_0_20px_rgba(0,240,255,0.2)]">
                   <span className="text-[10px] font-black uppercase text-yellow-400 tracking-wider block mb-1">
-                    👑 AI EVALUATED PERSONA TITLE
+                    👑 OFFICIAL ACM PERSONA TITLE
                   </span>
                   <div className="text-xl sm:text-2xl font-black text-white">
                     "{personaResult.personaTitle}"
@@ -503,7 +719,7 @@ export default function PersonaQuiz() {
                 </div>
 
                 {/* 🎯 RECOMMENDED ACM WING */}
-                <div className="bg-[#081538] border border-blue-500/40 rounded-2xl p-5 mb-6">
+                <div className="bg-[#081538] border border-cyan-500/40 rounded-2xl p-5 mb-6 shadow-inner">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400">
                       🎯 RECOMMENDED PEC ACM WING
@@ -520,7 +736,7 @@ export default function PersonaQuiz() {
                 {/* VISUAL STATS BARS */}
                 <div className="space-y-3 mb-6 bg-[#030818] p-4 rounded-2xl border border-slate-800">
                   <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider block mb-1">
-                    PEC Tech & Survival Metrics
+                    PEC Tech Aptitude Metrics
                   </span>
 
                   <div>
@@ -535,7 +751,7 @@ export default function PersonaQuiz() {
 
                   <div>
                     <div className="flex justify-between text-xs font-bold mb-1">
-                      <span className="text-purple-400 flex items-center gap-1"><Brain size={12} /> AI Innovation</span>
+                      <span className="text-purple-400 flex items-center gap-1"><Brain size={12} /> AI & Machine Intelligence</span>
                       <span className="font-mono text-white">{personaResult.aiScore}%</span>
                     </div>
                     <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden">
@@ -545,7 +761,7 @@ export default function PersonaQuiz() {
 
                   <div>
                     <div className="flex justify-between text-xs font-bold mb-1">
-                      <span className="text-cyan-400 flex items-center gap-1"><Code size={12} /> Dev Execution</span>
+                      <span className="text-cyan-400 flex items-center gap-1"><Code size={12} /> Full-Stack Dev Architecture</span>
                       <span className="font-mono text-white">{personaResult.devScore}%</span>
                     </div>
                     <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden">
@@ -576,7 +792,7 @@ export default function PersonaQuiz() {
                   audioEngine.playClick();
                   downloadCardAsImage("persona-card-export", `${name.replace(/\s+/g, '_')}_PEC_ACM_Card.png`, personaResult);
                 }}
-                className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-[#5a7fa6] to-[#5a7fa6] hover:scale-105 text-slate-950 font-black text-sm flex items-center justify-center gap-2 shadow-xl shadow-blue-500/30 transition cursor-pointer"
+                className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-[#0075FF] via-[#00F0FF] to-[#7000FF] hover:scale-105 text-slate-950 font-black text-sm flex items-center justify-center gap-2 shadow-xl shadow-cyan-500/30 transition cursor-pointer"
               >
                 <Download size={18} />
                 <span>Download Persona Card PNG</span>

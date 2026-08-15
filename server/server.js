@@ -411,43 +411,93 @@ Reply with ONLY valid JSON (NO markdown formatting, NO backticks):
 /**
  * 🎓 PEC ACM PERSONA AI EVALUATOR
  * Performs strict, multi-layer evaluation on candidate answers:
- * - Detects gibberish, filler, and off-topic concepts
- * - Provides realistic constructive engineering coaching
+ * - Detects gibberish, filler, "idk", and off-topic answers (awards 0 score!)
+ * - Evaluates real-life problem solving intuition across CP, AI/ML, and Dev
+ * - Deterministically assigns official ACM backend titles (NEVER hallucinated)
  */
+const DETERMINISTIC_ACM_TITLES = {
+  "ACM-Dev": [
+    { minScore: 85, title: "Full-Stack Systems Architect", description: "You design scalable software architectures and turn complex ideas into robust, functioning systems." },
+    { minScore: 70, title: "Full-Stack Product Engineer", description: "You excel at building end-to-end practical digital applications that solve immediate campus bottlenecks." },
+    { minScore: 50, title: "Dev Ecosystem Specialist", description: "You demonstrate hands-on software intuition, prioritizing practical tooling, APIs, and usability." },
+    { minScore: 1,  title: "Emerging Software Builder", description: "You possess a builder's instinct ready to be sharpened through live projects in the ACM Dev Wing." }
+  ],
+  "ACM-CP": [
+    { minScore: 85, title: "Algorithmic Grandmaster", description: "You dissect complex logistics with mathematical precision, constraint optimization, and asymptotic efficiency." },
+    { minScore: 70, title: "Optimization Strategist", description: "You approach challenges by breaking them into priority queues, edge cases, and high-efficiency workflows." },
+    { minScore: 50, title: "Logic & Edge-Case Specialist", description: "You demonstrate sharp structural reasoning and look for systematic bottlenecks before implementing solutions." },
+    { minScore: 1,  title: "Emerging Problem Solver", description: "You have strong analytical curiosity ready to master competitive programming patterns in the ACM CP Wing." }
+  ],
+  "ACM-AI": [
+    { minScore: 85, title: "Neural Systems Architect", description: "You think in automated pipelines, computer vision, and machine intelligence models to modernize campus workflows." },
+    { minScore: 70, title: "Machine Intelligence Specialist", description: "You harness predictive data, intelligent pattern recognition, and smart automation for real-world impact." },
+    { minScore: 50, title: "Applied AI Innovator", description: "You identify key opportunities to integrate smart assistants, intelligent filters, and data telemetry into everyday tasks." },
+    { minScore: 1,  title: "Emerging Data Visionary", description: "You show great enthusiasm for AI/ML and automated intelligence within the ACM AI Wing." }
+  ]
+};
+
+function resolveDeterministicTitle(wing, score, isAllGibberish = false) {
+  if (isAllGibberish || score <= 0) {
+    return {
+      personaTitle: "Unassessed Candidate (No Valid Attempt)",
+      wingDescription: "No technical logic was provided. Submit thoughtful, structured solutions to unlock your official ACM Wing recommendation."
+    };
+  }
+
+  const wingList = DETERMINISTIC_ACM_TITLES[wing] || DETERMINISTIC_ACM_TITLES["ACM-Dev"];
+  for (const item of wingList) {
+    if (score >= item.minScore) {
+      return { personaTitle: item.title, wingDescription: item.description };
+    }
+  }
+
+  return {
+    personaTitle: wingList[wingList.length - 1].title,
+    wingDescription: wingList[wingList.length - 1].description
+  };
+}
+
 app.post("/api/persona/evaluate", async (req, res) => {
   const { name, branch, scenario1, answer1, scenario2, answer2 } = req.body;
 
-  const prompt = `You are a technical interviewer and AI Coach for the PEC ACM Student Chapter.
+  const prompt = `You are a technical interviewer and evaluation coach for the PEC ACM Student Chapter.
 A student at Punjab Engineering College (PEC Chandigarh) has answered two real-world campus scenarios:
 
 Student Name: ${name || "Student"}
 Branch: ${branch || "Engineering"}
 
-Scenario 1: "${scenario1}"
+Scenario 1 (Optimization & Queuing Logic): "${scenario1}"
 Candidate's Answer 1: "${answer1}"
 
-Scenario 2: "${scenario2}"
+Scenario 2 (Intelligent Systems & Automation): "${scenario2}"
 Candidate's Answer 2: "${answer2}"
 
 Evaluate BOTH answers honestly and critically:
-1. GIBBERISH / FILLER DETECTION:
-   - If an answer is meaningless filler, keyboard mash, or nonsensical (e.g. "blah blah", "asdf", "test", "idk", "aaaa"):
+1. GIBBERISH / FILLER / "IDK" DETECTION (CRITICAL):
+   - If an answer is "idk", "dont know", "no idea", filler, single words, keyboard mash, or nonsensical:
      - status: "GIBBERISH"
-     - focusBadge: "⚠️ Incoherent / Filler Answer"
-     - thoughtCorrectly: "❌ No engineering logic detected: You entered a non-specific filler response. Under real campus constraints, this fails to solve the crisis."
-     - betterWay: "💡 What a logical solution looks like: [Provide a concrete, realistic engineering/student solution tailored to this exact scenario]"
+     - focusBadge: "⚠️ No Score (0%): Filler / IDK Detected"
+     - thoughtCorrectly: "❌ No technical score awarded (0%): You provided a non-responsive answer ('idk' / filler). In technical screening, answers require logical breakdown or structured reasoning to earn domain marks."
+     - betterWay: "💡 How an engineer solves this scenario: [Provide a concrete, realistic engineering breakdown tailored to this exact scenario]"
+     - SCORE MUST BE 0 for this question!
 2. OFF-TOPIC CONCEPT DETECTION:
-   - If an answer is completely misaligned with the question (e.g. suggesting a physical sprint/running when asked to build an AI robot/gadget):
+   - If an answer is completely misaligned or discusses unrelated topics:
      - status: "OFF_TOPIC"
      - focusBadge: "⚠️ Concept Mismatch (Off-Topic)"
-     - thoughtCorrectly: "⚠️ Off-topic concept: Your answer describes [what they wrote], which does not address the question of [what was asked]."
-     - betterWay: "💡 Reframing into an engineering solution: [Guide them on how to turn their concept into a proper automated system]"
+     - thoughtCorrectly: "⚠️ Concept mismatch (Low score awarded): Your answer does not address the core constraints and objectives of this technical scenario."
+     - betterWay: "💡 Reframing into an engineering solution: [Guide them on how to turn their concept into a proper automated/optimized system]"
 3. LEGITIMATE / COHERENT ATTEMPT:
    - If the student made a genuine attempt:
      - status: "VALID"
      - focusBadge: "Short 2-3 word technical badge"
      - thoughtCorrectly: "Highlight what was practical, clever, or resourceful in their exact idea."
      - betterWay: "Provide actionable engineering tips to elevate their solution to a higher standard ('You thought this correctly, but it could have been done even better by...')."
+
+SCORING RULES (0-98):
+- If BOTH answers are GIBBERISH / IDK: cpScore = 0, aiScore = 0, devScore = 0.
+- If Answer 1 is GIBBERISH / IDK: cpScore = 0.
+- If Answer 2 is GIBBERISH / IDK: aiScore = 0.
+- For legitimate answers, score them honestly based on demonstrated problem solving (CP: 40-98, AI: 40-98, Dev: 40-98).
 
 Return ONLY valid JSON (no markdown fences, no backticks):
 {
@@ -463,18 +513,28 @@ Return ONLY valid JSON (no markdown fences, no backticks):
     "thoughtCorrectly": "string",
     "betterWay": "string"
   },
-  "personaTitle": "string",
   "recommendedWing": "ACM-CP" | "ACM-AI" | "ACM-Dev",
-  "wingDescription": "string",
-  "cpScore": <number 20-99>,
-  "aiScore": <number 20-99>,
-  "devScore": <number 20-99>
+  "cpScore": <number 0-98>,
+  "aiScore": <number 0-98>,
+  "devScore": <number 0-98>
 }`;
 
   try {
     const activeEngine = getRandomAIProvider();
     const { result } = await askObjectWithFallback(activeEngine, prompt);
-    res.json(result);
+
+    // Apply strict deterministic titles
+    const isAllGibberish = result.feedbackQ1?.status === "GIBBERISH" && result.feedbackQ2?.status === "GIBBERISH";
+    const dominantWing = result.recommendedWing || "ACM-Dev";
+    const maxScore = Math.max(result.cpScore || 0, result.aiScore || 0, result.devScore || 0);
+
+    const titleInfo = resolveDeterministicTitle(dominantWing, maxScore, isAllGibberish);
+
+    res.json({
+      ...result,
+      personaTitle: titleInfo.personaTitle,
+      wingDescription: titleInfo.wingDescription
+    });
   } catch (error) {
     console.error("Persona evaluation fallback error:", error);
     res.status(500).json({ error: "AI evaluation fallback" });

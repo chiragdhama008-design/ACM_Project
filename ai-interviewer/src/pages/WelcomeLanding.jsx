@@ -36,24 +36,24 @@ export default function WelcomeLanding() {
 
       {/* Futuristic Background Light Orbs */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute -top-40 -left-40 w-[35rem] h-[35rem] bg-[#5a7fa6]/20 rounded-full blur-[140px]"></div>
-        <div className="absolute top-1/3 -right-40 w-[35rem] h-[35rem] bg-[#5a7fa6]/10 rounded-full blur-[140px]"></div>
-        <div className="absolute bottom-10 left-1/3 w-[40rem] h-[40rem] bg-[#7000FF]/10 rounded-full blur-[160px]"></div>
+        <div className="absolute -top-40 -left-40 w-[35rem] h-[35rem] bg-[#00F0FF]/20 rounded-full blur-[140px]"></div>
+        <div className="absolute top-1/3 -right-40 w-[35rem] h-[35rem] bg-[#7000FF]/20 rounded-full blur-[140px]"></div>
+        <div className="absolute bottom-10 left-1/3 w-[40rem] h-[40rem] bg-[#FF007A]/15 rounded-full blur-[160px]"></div>
       </div>
 
       {/* HERO SECTION */}
       <section className="relative pt-12 pb-16 md:pt-20 md:pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center z-10">
         
-        {/* Static Subdued Tech Tag (No sparkling, eye-friendly faded blue, static) */}
-        <div className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full bg-[#071126]/90 border border-blue-500/30 text-blue-200/90 text-xs font-bold uppercase tracking-wider mb-8 shadow-sm backdrop-blur-md">
-          <Radio size={14} className="text-blue-400/80" />
+        {/* Static Tech Tag */}
+        <div className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full bg-[#071126]/90 border border-cyan-500/40 text-cyan-300 text-xs font-bold uppercase tracking-wider mb-8 shadow-[0_0_20px_rgba(0,240,255,0.2)] backdrop-blur-md">
+          <Radio size={14} className="text-cyan-400 animate-pulse" />
           <span>PEC ACM STUDENT CHAPTER • COMPUTING STUDENT SOCIETY</span>
         </div>
 
         {/* Hero Title */}
         <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-white tracking-tight leading-[1.1] mb-6">
           Unleash Your PEC Tech Persona & Discover Your{" "}
-          <span className="bg-gradient-to-r from-[#5a7fa6] via-[#5a7fa6] to-[#5a7fa6] bg-clip-text text-transparent drop-shadow-[0_10px_20px_rgba(90,126,166,0.4)]">
+          <span className="bg-gradient-to-r from-[#00F0FF] via-[#7000FF] to-[#FF007A] bg-clip-text text-transparent drop-shadow-[0_0_35px_rgba(0,240,255,0.8)] font-black">
             Ideal ACM Wing
           </span>
         </h1>
@@ -68,7 +68,7 @@ export default function WelcomeLanding() {
           <Link
             to="/quiz"
             onClick={handleLaunch}
-            className="relative group px-10 py-5 rounded-2xl bg-gradient-to-r from-[#0075FF] via-[#00F0FF] to-[#0066FF] text-slate-950 font-black text-xl flex items-center justify-center gap-3.5 shadow-[0_0_50px_rgba(0,240,255,0.4)] hover:shadow-[0_0_70px_rgba(0,240,255,0.7)] hover:scale-105 transition-all duration-300 cursor-pointer overflow-hidden"
+            className="relative group px-10 py-5 rounded-2xl bg-gradient-to-r from-[#0075FF] via-[#00F0FF] to-[#7000FF] text-slate-950 font-black text-xl flex items-center justify-center gap-3.5 shadow-[0_0_50px_rgba(0,240,255,0.5)] hover:shadow-[0_0_75px_rgba(0,240,255,0.8)] hover:scale-105 transition-all duration-300 cursor-pointer overflow-hidden"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent transform -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
 
@@ -79,10 +79,10 @@ export default function WelcomeLanding() {
         </div>
 
         {/* Dynamic AI Scenario Preview Banner */}
-        <div className="relative max-w-4xl mx-auto rounded-3xl p-1 bg-gradient-to-r from-[#0084FF]/70 via-[#00F0FF]/50 to-[#8B5CF6]/70 shadow-[0_20px_50px_rgba(0,117,255,0.25)]">
+        <div className="relative max-w-4xl mx-auto rounded-3xl p-1 bg-gradient-to-r from-[#0084FF] via-[#00F0FF] to-[#7000FF] shadow-[0_20px_50px_rgba(0,117,255,0.35)]">
           <div className="bg-[#050c21]/95 rounded-[22px] p-6 sm:p-8 border border-blue-500/30 text-left backdrop-blur-xl">
-            <div className="w-full max-w-md mx-auto bg-slate-900 rounded-full h-3 border border-blue-500/40 overflow-hidden mb-6">
-              <div className="h-full bg-gradient-to-r from-[#5a7fa6] via-[#5a7fa6] to-[#7000FF] w-full"></div>
+            <div className="w-full max-w-md mx-auto bg-slate-900 rounded-full h-3 border border-cyan-500/40 overflow-hidden mb-6">
+              <div className="h-full bg-gradient-to-r from-[#00F0FF] via-[#7000FF] to-[#FF007A] w-full"></div>
             </div>
             <div className="flex items-center justify-between border-b border-blue-900/60 pb-4 mb-6">
               <div className="flex items-center gap-3">
