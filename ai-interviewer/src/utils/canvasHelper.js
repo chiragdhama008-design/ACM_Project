@@ -169,7 +169,7 @@ export function downloadCardAsImage(elementId, filename = "PEC_ACM_Persona_Score
   ctx.font = "bold 10px system-ui, -apple-system, sans-serif";
   ctx.fillText("👑 OFFICIAL ACM PERSONA TITLE", 54, titleBoxY + 24);
 
-  const personaTitle = personaData?.personaTitle || "Full-Stack Systems Architect";
+  const personaTitle = personaData?.personaTitle || "Full-Stack Phantom";
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 20px system-ui, -apple-system, sans-serif";
   ctx.fillText(`"${personaTitle}"`, 54, titleBoxY + 54);

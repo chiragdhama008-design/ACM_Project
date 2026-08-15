@@ -52,7 +52,7 @@ function cleanWhisperHallucinations(rawText) {
  * This replaces the unreliable browser SpeechRecognition API entirely.
  * Whisper handles all accents, speech clarity levels, and non-native speakers accurately.
  */
-app.post("/api/transcribe", async (req, res) => {
+app.post(["/api/transcribe", "/transcribe"], async (req, res) => {
   try {
     const { audio } = req.body;
     if (!audio) {
@@ -415,28 +415,44 @@ Reply with ONLY valid JSON (NO markdown formatting, NO backticks):
  * - Evaluates real-life problem solving intuition across CP, AI/ML, and Dev
  * - Deterministically assigns official ACM backend titles (NEVER hallucinated)
  */
+/**
+ * 🎓 PEC ACM PERSONA AI EVALUATOR
+ * Assigns official ACM titles strictly from the curated CP, AI/ML, and Dev categories:
+ * - Competitive Programming: The TLE Slayer, O(1) Brainiac, Codeforces Warlord, Binary Search Sorcerer, The Brute-Force Boss, Nested-Loop Legend, The Edge-Case Anarchist
+ * - Machine Learning / AI: The Overfitting Whisperer, Neural Network Alchemist, Prompt Engineering Monarch, The Gradient Descendant, Dataset Architect, Epoch Enthusiast, Hallucination Handler
+ * - Software Development: Full-Stack Phantom, The Production Crasher, Git Merge Mastermind, Terminal Overlord, UI/UX Visionary, Scripting Ninja, The Coffee-to-Code Converter
+ */
 const DETERMINISTIC_ACM_TITLES = {
-  "ACM-Dev": [
-    { minScore: 85, title: "Full-Stack Systems Architect", description: "You design scalable software architectures and turn complex ideas into robust, functioning systems." },
-    { minScore: 70, title: "Full-Stack Product Engineer", description: "You excel at building end-to-end practical digital applications that solve immediate campus bottlenecks." },
-    { minScore: 50, title: "Dev Ecosystem Specialist", description: "You demonstrate hands-on software intuition, prioritizing practical tooling, APIs, and usability." },
-    { minScore: 1,  title: "Emerging Software Builder", description: "You possess a builder's instinct ready to be sharpened through live projects in the ACM Dev Wing." }
-  ],
   "ACM-CP": [
-    { minScore: 85, title: "Algorithmic Grandmaster", description: "You dissect complex logistics with mathematical precision, constraint optimization, and asymptotic efficiency." },
-    { minScore: 70, title: "Optimization Strategist", description: "You approach challenges by breaking them into priority queues, edge cases, and high-efficiency workflows." },
-    { minScore: 50, title: "Logic & Edge-Case Specialist", description: "You demonstrate sharp structural reasoning and look for systematic bottlenecks before implementing solutions." },
-    { minScore: 1,  title: "Emerging Problem Solver", description: "You have strong analytical curiosity ready to master competitive programming patterns in the ACM CP Wing." }
+    { minScore: 92, title: "The TLE Slayer", description: "Time Limit Exceeded won't touch this algorithm." },
+    { minScore: 86, title: "O(1) Brainiac", description: "Solves problems in constant time." },
+    { minScore: 80, title: "Codeforces Warlord", description: "Dominates complex algorithmic challenges with sheer tactical supremacy." },
+    { minScore: 75, title: "Binary Search Sorcerer", description: "Divides and conquers any problem space with logarithmic precision." },
+    { minScore: 60, title: "The Brute-Force Boss", description: "Gets the job done, no matter how messy." },
+    { minScore: 45, title: "Nested-Loop Legend", description: "Powers through heavy workloads one iterative loop at a time." },
+    { minScore: 1,  title: "The Edge-Case Anarchist", description: "Finds bugs no one else thought of." }
   ],
   "ACM-AI": [
-    { minScore: 85, title: "Neural Systems Architect", description: "You think in automated pipelines, computer vision, and machine intelligence models to modernize campus workflows." },
-    { minScore: 70, title: "Machine Intelligence Specialist", description: "You harness predictive data, intelligent pattern recognition, and smart automation for real-world impact." },
-    { minScore: 50, title: "Applied AI Innovator", description: "You identify key opportunities to integrate smart assistants, intelligent filters, and data telemetry into everyday tasks." },
-    { minScore: 1,  title: "Emerging Data Visionary", description: "You show great enthusiasm for AI/ML and automated intelligence within the ACM AI Wing." }
+    { minScore: 92, title: "The Overfitting Whisperer", description: "Trains models on pure intuition." },
+    { minScore: 86, title: "Neural Network Alchemist", description: "Transmutes raw weights and activations into predictive intelligence." },
+    { minScore: 80, title: "Prompt Engineering Monarch", description: "Commands foundation models and AI architectures with sovereign precision." },
+    { minScore: 75, title: "The Gradient Descendant", description: "Finds the global optimum through relentless iterative learning." },
+    { minScore: 60, title: "Dataset Architect", description: "Has the raw intuition, just needs the math." },
+    { minScore: 45, title: "Epoch Enthusiast", description: "Never stops training, learning, and iterating to perfection." },
+    { minScore: 1,  title: "Hallucination Handler", description: "Turns AI chaotic energy into working features." }
+  ],
+  "ACM-Dev": [
+    { minScore: 92, title: "Full-Stack Phantom", description: "Builds complete systems out of thin air." },
+    { minScore: 86, title: "The Production Crasher", description: "Ship fast, fix in production." },
+    { minScore: 80, title: "Git Merge Mastermind", description: "Resolves merge conflicts and streamlines deployment pipelines effortlessly." },
+    { minScore: 75, title: "Terminal Overlord", description: "Rules the command line, servers, and cloud infrastructure." },
+    { minScore: 60, title: "UI/UX Visionary", description: "Cares about how it feels before how it runs." },
+    { minScore: 45, title: "Scripting Ninja", description: "Automates workflows and stitches microservices together with stealth." },
+    { minScore: 1,  title: "The Coffee-to-Code Converter", description: "Fuels high-output development cycles with pure caffeine and ambition." }
   ]
 };
 
-function resolveDeterministicTitle(wing, score, isAllGibberish = false) {
+function resolveDeterministicTitle(wing, score, isAllGibberish = false, textCombined = "") {
   if (isAllGibberish || score <= 0) {
     return {
       personaTitle: "Unassessed Candidate (No Valid Attempt)",
@@ -444,7 +460,25 @@ function resolveDeterministicTitle(wing, score, isAllGibberish = false) {
     };
   }
 
-  const wingList = DETERMINISTIC_ACM_TITLES[wing] || DETERMINISTIC_ACM_TITLES["ACM-Dev"];
+  const wingKey = DETERMINISTIC_ACM_TITLES[wing] ? wing : "ACM-Dev";
+  const wingList = DETERMINISTIC_ACM_TITLES[wingKey];
+  const lowerText = (textCombined || "").toLowerCase();
+
+  // Check for creative wildcard signals
+  if (wingKey === "ACM-CP" && (lowerText.includes("edge case") || lowerText.includes("bug") || lowerText.includes("overflow") || lowerText.includes("corner case"))) {
+    if (score < 85) {
+      return { personaTitle: "The Edge-Case Anarchist", wingDescription: "Finds bugs no one else thought of." };
+    }
+  } else if (wingKey === "ACM-AI" && (lowerText.includes("hallucinat") || lowerText.includes("creative") || lowerText.includes("generative") || lowerText.includes("wild"))) {
+    if (score < 85) {
+      return { personaTitle: "Hallucination Handler", wingDescription: "Turns AI chaotic energy into working features." };
+    }
+  } else if (wingKey === "ACM-Dev" && (lowerText.includes("coffee") || lowerText.includes("night") || lowerText.includes("hack") || lowerText.includes("fast"))) {
+    if (score < 85 && score >= 50) {
+      return { personaTitle: "The Coffee-to-Code Converter", wingDescription: "Fuels high-output development cycles with pure caffeine and ambition." };
+    }
+  }
+
   for (const item of wingList) {
     if (score >= item.minScore) {
       return { personaTitle: item.title, wingDescription: item.description };
@@ -528,7 +562,8 @@ Return ONLY valid JSON (no markdown fences, no backticks):
     const dominantWing = result.recommendedWing || "ACM-Dev";
     const maxScore = Math.max(result.cpScore || 0, result.aiScore || 0, result.devScore || 0);
 
-    const titleInfo = resolveDeterministicTitle(dominantWing, maxScore, isAllGibberish);
+    const combinedAnswers = `${answer1 || ""} ${answer2 || ""}`;
+    const titleInfo = resolveDeterministicTitle(dominantWing, maxScore, isAllGibberish, combinedAnswers);
 
     res.json({
       ...result,

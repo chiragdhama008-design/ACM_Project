@@ -8,6 +8,7 @@ import { generateRandomScenarios } from "../utils/scenarioEngine";
 import { triggerConfetti, downloadCardAsImage } from "../utils/canvasHelper";
 import { audioEngine } from "../utils/audioSynth";
 import { supabase } from "../supabaseClient";
+import { API_URL } from "../config/api.js";
 import {
   Keyboard,
   Sparkles,
@@ -37,7 +38,9 @@ import {
   Mic,
   MicOff,
   Volume2,
-  Loader2
+  Loader2,
+  ShieldAlert,
+  Info
 } from "lucide-react";
 
 export default function PersonaQuiz() {
@@ -60,10 +63,17 @@ export default function PersonaQuiz() {
   const [isListening, setIsListening] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [micNotice, setMicNotice] = useState("");
+  const [micBlocked, setMicBlocked] = useState(false);
+  const [audioLevel, setAudioLevel] = useState(0); // 0 to 100 sensitivity level
+
   const recognitionRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const recordingActiveRef = useRef(false);
+  const audioContextRef = useRef(null);
+  const analyserRef = useRef(null);
+  const animFrameRef = useRef(null);
+  const mediaStreamRef = useRef(null);
 
   // Results
   const [personaResult, setPersonaResult] = useState(null);
@@ -82,6 +92,24 @@ export default function PersonaQuiz() {
     "Materials & Metallurgical (MME)",
     "Production & Industrial (PE)"
   ];
+
+  // Check microphone permissions on mount if browser supports Permissions API
+  useEffect(() => {
+    if (navigator.permissions && navigator.permissions.query) {
+      navigator.permissions.query({ name: "microphone" }).then((perm) => {
+        if (perm.state === "denied") {
+          setMicBlocked(true);
+        }
+        perm.onchange = () => {
+          if (perm.state === "granted") {
+            setMicBlocked(false);
+          } else if (perm.state === "denied") {
+            setMicBlocked(true);
+          }
+        };
+      }).catch(() => {});
+    }
+  }, []);
 
   // Generate dynamic scenarios on mount or retake
   useEffect(() => {
@@ -115,18 +143,134 @@ export default function PersonaQuiz() {
     }
   }, [step]);
 
+  // Helper to cleanup Web Audio Context
+  const cleanupAudioAnalyser = () => {
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+    if (audioContextRef.current) {
+      try {
+        audioContextRef.current.close();
+      } catch (e) {}
+      audioContextRef.current = null;
+    }
+    setAudioLevel(0);
+  };
+
   // ==========================================
   // HIGH-SENSITIVITY SPEECH-TO-TEXT ENGINE
   // ==========================================
   const startListening = async () => {
     audioEngine.playClick();
     audioEngine.stopSpeaking(); // Stop AI question playback so mic doesn't pick it up
-    setIsListening(true);
-    setMicNotice("🎙️ Listening with high sensitivity... Speak your answer now.");
+    setMicBlocked(false);
+    setMicNotice("🎙️ Activating high-sensitivity microphone...");
     recordingActiveRef.current = true;
     audioChunksRef.current = [];
 
-    // 1. Initialize Web Speech API for real-time instantaneous verbatim speech
+    let stream = null;
+
+    // 1. Capture Ultra-Sensitive Audio Stream with Progressive Constraints
+    try {
+      try {
+        // High sensitivity: autoGainControl on, echoCancellation on, noiseSuppression false/adaptive so soft voices aren't cut
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: false,
+            autoGainControl: true
+          }
+        });
+      } catch (strictErr) {
+        // Fallback to basic audio constraint for restrictive browsers / mobile
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
+
+      mediaStreamRef.current = stream;
+      setIsListening(true);
+      setMicNotice("🎙️ High sensitivity mic active. Speak now (Whisper AI will transcribe verbatim)...");
+
+      // Setup Real-time Web Audio Volume Analyser
+      try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          const audioCtx = new AudioContextClass();
+          audioContextRef.current = audioCtx;
+          const source = audioCtx.createMediaStreamSource(stream);
+          const analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 256;
+          analyser.smoothingTimeConstant = 0.5;
+          source.connect(analyser);
+          analyserRef.current = analyser;
+
+          const dataArray = new Uint8Array(analyser.frequencyBinCount);
+          const updateVolume = () => {
+            if (!recordingActiveRef.current) return;
+            analyser.getByteFrequencyData(dataArray);
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+              sum += dataArray[i];
+            }
+            const average = sum / dataArray.length;
+            const normalized = Math.min(100, Math.round((average / 128) * 100));
+            setAudioLevel(normalized);
+            animFrameRef.current = requestAnimationFrame(updateVolume);
+          };
+          updateVolume();
+        }
+      } catch (e) {
+        console.warn("Audio analyser initialization notice:", e);
+      }
+
+      // Initialize MediaRecorder for Whisper backend transcription
+      const mimeTypes = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/mp4",
+        "audio/aac",
+        "audio/ogg"
+      ];
+      let selectedMime = "";
+      for (const m of mimeTypes) {
+        if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) {
+          selectedMime = m;
+          break;
+        }
+      }
+
+      const recorderOptions = selectedMime ? { mimeType: selectedMime } : undefined;
+      const mediaRecorder = new MediaRecorder(stream, recorderOptions);
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.start(250);
+
+    } catch (micErr) {
+      console.error("Microphone access failed:", micErr);
+      recordingActiveRef.current = false;
+      setIsListening(false);
+      cleanupAudioAnalyser();
+
+      if (
+        micErr.name === "NotAllowedError" ||
+        micErr.name === "PermissionDeniedError" ||
+        micErr.name === "SecurityError"
+      ) {
+        setMicBlocked(true);
+        setMicNotice("⚠️ Microphone permission is blocked by your browser. Please follow the instructions below to enable it.");
+      } else {
+        setMicNotice("⚠️ Could not access microphone. Please check your system audio settings or type below.");
+      }
+      return;
+    }
+
+    // 2. Parallel Instant SpeechRecognition (if available in Chrome/Edge for instant live preview)
     try {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SpeechRecognition) {
@@ -152,7 +296,7 @@ export default function PersonaQuiz() {
         };
 
         recognition.onerror = (err) => {
-          console.warn("Web Speech API notice:", err.error);
+          console.warn("SpeechRecognition notice:", err.error);
         };
 
         recognition.onend = () => {
@@ -165,47 +309,15 @@ export default function PersonaQuiz() {
         recognitionRef.current = recognition;
       }
     } catch (err) {
-      console.warn("Web Speech API initialization issue:", err);
-    }
-
-    // 2. Capture high-sensitivity MediaRecorder stream with Whisper backend backup
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          channelCount: 1,
-          sampleRate: 48000
-        }
-      });
-
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : MediaRecorder.isTypeSupported("audio/webm")
-        ? "audio/webm"
-        : "audio/mp4";
-
-      const mediaRecorder = new MediaRecorder(stream, { mimeType });
-      mediaRecorderRef.current = mediaRecorder;
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder.start(250);
-    } catch (micErr) {
-      console.warn("Microphone media capture issue:", micErr);
-      setMicNotice("Microphone active (speech mode). You can also edit/type below.");
+      console.warn("Web Speech API notice:", err);
     }
   };
 
   const stopListening = async () => {
-    if (!recordingActiveRef.current) return;
+    if (!recordingActiveRef.current && !isListening) return;
     recordingActiveRef.current = false;
     setIsListening(false);
+    cleanupAudioAnalyser();
     audioEngine.playClick();
 
     if (recognitionRef.current) {
@@ -218,11 +330,57 @@ export default function PersonaQuiz() {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       try {
         mediaRecorderRef.current.stop();
-        mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
       } catch (e) {}
     }
 
-    setMicNotice("✓ Audio input captured! You can review or refine your answer below.");
+    if (mediaStreamRef.current) {
+      try {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      } catch (e) {}
+      mediaStreamRef.current = null;
+    }
+
+    // Send recorded audio to high-accuracy Whisper server
+    setTimeout(async () => {
+      if (audioChunksRef.current.length > 0) {
+        const audioBlob = new Blob(audioChunksRef.current, { type: audioChunksRef.current[0]?.type || "audio/webm" });
+        if (audioBlob.size > 1200) {
+          setIsTranscribing(true);
+          setMicNotice("⚡ Processing high-accuracy AI speech transcription (Whisper)...");
+
+          try {
+            const base64Audio = await new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result);
+              reader.readAsDataURL(audioBlob);
+            });
+
+            const res = await fetch(`${API_URL}/api/transcribe`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ audio: base64Audio })
+            });
+
+            if (res.ok) {
+              const data = await res.json();
+              if (data && data.text && data.text.trim()) {
+                const whisperText = data.text.trim();
+                if (step === "q1") {
+                  setAnswer1((prev) => (whisperText.length > prev.length ? whisperText : prev || whisperText));
+                } else if (step === "q2") {
+                  setAnswer2((prev) => (whisperText.length > prev.length ? whisperText : prev || whisperText));
+                }
+              }
+            }
+          } catch (err) {
+            console.warn("Whisper transcription sync warning:", err);
+          } finally {
+            setIsTranscribing(false);
+          }
+        }
+      }
+      setMicNotice("✓ High-accuracy voice input captured! You can refine or edit below.");
+    }, 400);
   };
 
   // Submit Answer & Move Next
@@ -254,9 +412,9 @@ export default function PersonaQuiz() {
         let finalResult = null;
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 4000);
+          const timeoutId = setTimeout(() => controller.abort(), 6000);
 
-          const response = await fetch("/api/persona/evaluate", {
+          const response = await fetch(`${API_URL}/api/persona/evaluate`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -277,7 +435,7 @@ export default function PersonaQuiz() {
               finalResult = {
                 name: name || "PEC Student",
                 branch: `${branch} (${studentType})`,
-                personaTitle: data.personaTitle || "Full-Stack Systems Architect",
+                personaTitle: data.personaTitle || "Full-Stack Phantom",
                 recommendedWing: data.recommendedWing || "ACM-Dev",
                 wingDescription: data.wingDescription || "Practical problem solver built for PEC Chandigarh.",
                 cpScore: data.cpScore ?? 75,
@@ -552,7 +710,7 @@ export default function PersonaQuiz() {
 
             {/* 🎙️ HIGH-ACCURACY MIC AUDIO INPUT CONTROLS */}
             <div className="mb-5 p-4 rounded-2xl bg-[#061438] border border-cyan-500/30 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-3 w-full sm:w-auto">
+              <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={isListening ? stopListening : startListening}
@@ -565,28 +723,83 @@ export default function PersonaQuiz() {
                   {isListening ? (
                     <>
                       <MicOff size={18} />
-                      <span>Stop Recording (Mic Active)</span>
+                      <span>Stop & Transcribe (Mic Active)</span>
                     </>
                   ) : (
                     <>
                       <Mic size={18} />
-                      <span>Speak Answer (High Accuracy Mic)</span>
+                      <span>Speak Answer (Universal High-Sensitivity Mic)</span>
                     </>
                   )}
                 </button>
 
+                {/* 📊 Live Audio Sensitivity Waveform Visualizer */}
                 {isListening && (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-950/60 border border-red-500/40 text-red-300 text-xs font-bold animate-pulse">
-                    <span className="w-2 h-2 rounded-full bg-red-400"></span>
-                    <span>Recording audio live...</span>
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-950/70 border border-red-500/50 text-red-300 text-xs font-bold">
+                    <span className="w-2 h-2 rounded-full bg-red-400 animate-ping"></span>
+                    <span>Voice Input:</span>
+                    <div className="flex items-end gap-1 h-4 px-1">
+                      <div className="w-1 bg-cyan-400 rounded-full transition-all duration-75" style={{ height: `${Math.max(4, Math.min(16, (audioLevel * 0.16)))}px` }}></div>
+                      <div className="w-1 bg-cyan-300 rounded-full transition-all duration-75" style={{ height: `${Math.max(6, Math.min(16, (audioLevel * 0.22)))}px` }}></div>
+                      <div className="w-1 bg-teal-300 rounded-full transition-all duration-75" style={{ height: `${Math.max(4, Math.min(16, (audioLevel * 0.28)))}px` }}></div>
+                      <div className="w-1 bg-cyan-400 rounded-full transition-all duration-75" style={{ height: `${Math.max(6, Math.min(16, (audioLevel * 0.20)))}px` }}></div>
+                      <div className="w-1 bg-cyan-200 rounded-full transition-all duration-75" style={{ height: `${Math.max(4, Math.min(16, (audioLevel * 0.14)))}px` }}></div>
+                    </div>
+                  </div>
+                )}
+
+                {isTranscribing && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-950/70 border border-cyan-400/50 text-cyan-300 text-xs font-bold animate-pulse">
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Whisper AI Transcribing...</span>
                   </div>
                 )}
               </div>
 
               <span className="text-xs text-blue-200/80 italic text-center sm:text-right">
-                {micNotice || "💡 You can speak into your mic or type directly below (No autocorrect)"}
+                {micNotice || "💡 Speak naturally in any accent — Whisper AI transcribes accurately. Or type below."}
               </span>
             </div>
+
+            {/* ⚠️ BROWSER MICROPHONE PERMISSION BLOCKED HELPER */}
+            {micBlocked && (
+              <div className="mb-5 p-4 rounded-2xl bg-amber-950/50 border border-amber-500/50 text-amber-100 text-xs shadow-xl animate-fade-in">
+                <div className="flex items-start gap-3">
+                  <ShieldAlert className="text-amber-400 shrink-0 mt-0.5" size={20} />
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <strong className="text-amber-300 text-sm font-bold">
+                        Microphone Blocked by Browser / Search Engine
+                      </strong>
+                      <button
+                        onClick={startListening}
+                        className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg transition cursor-pointer flex items-center gap-1"
+                      >
+                        <RefreshCw size={12} />
+                        <span>Retry Access</span>
+                      </button>
+                    </div>
+                    <p className="text-amber-200/90 leading-relaxed">
+                      Your browser has blocked microphone permissions for this site. Follow these quick steps to unblock:
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 font-mono text-[11px]">
+                      <div className="p-2 bg-[#020612]/70 rounded-xl border border-amber-500/30">
+                        <strong className="text-cyan-300 block mb-0.5">🌐 Chrome / Edge / Brave:</strong>
+                        Click the 🔒 lock / 🎛️ tune icon on the left of your URL address bar → Toggle <strong>Microphone</strong> to <strong>Allow</strong>.
+                      </div>
+                      <div className="p-2 bg-[#020612]/70 rounded-xl border border-amber-500/30">
+                        <strong className="text-orange-300 block mb-0.5">🦊 Firefox:</strong>
+                        Click the Permissions icon left of URL → Clear the blocked microphone permission → Reload page.
+                      </div>
+                      <div className="p-2 bg-[#020612]/70 rounded-xl border border-amber-500/30">
+                        <strong className="text-purple-300 block mb-0.5">🧭 Safari / Mobile:</strong>
+                        Tap 'aA' or Website Settings in search bar → Set Microphone to <strong>Allow</strong>.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* ANSWER TEXT EDITOR (WITH ZERO AUTOCORRECT) */}
             <div className="mb-6">
