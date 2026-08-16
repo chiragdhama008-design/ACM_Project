@@ -603,7 +603,7 @@ app.post(["/api/persona/send-email", "/api/send-persona-email"], async (req, res
   const brevoApiKey = process.env.BREVO_API_KEY;
   const resendApiKey = process.env.RESEND_API_KEY;
   const senderEmail = process.env.SENDER_EMAIL || "chirag.dhama008@gmail.com";
-  const senderName = "Chirag Dhama (PEC ACM)";
+  const senderName = "Chirag Dhama";
 
   console.log(`📨 Sending Persona Card email to: ${email}`);
 
