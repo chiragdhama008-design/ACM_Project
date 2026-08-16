@@ -379,10 +379,6 @@ export default function PersonaQuiz() {
         alert("Please enter your name!");
         return;
       }
-      if (!email.trim() || !email.includes("@")) {
-        alert("Please enter your personal email ID so we can send your Persona Card!");
-        return;
-      }
       setStep("q1");
     } else if (step === "q1") {
       if (!answer1.trim() || answer1.trim().length < 2) {
@@ -506,14 +502,16 @@ export default function PersonaQuiz() {
     } catch (err) {}
   };
 
-  // Send Persona Card via Email (server-side: ACM sends TO the user)
+  // Send Persona Card via Email (server-side: sends TO the user)
   const handleSendEmail = async () => {
-    if (!email || !email.includes("@")) {
-      setEmailStatus({
-        success: false,
-        message: "Please enter a valid personal email address."
-      });
-      return;
+    let targetEmail = (email || "").trim();
+    if (!targetEmail || !targetEmail.includes("@")) {
+      const promptedEmail = window.prompt("Enter your email address to receive your Persona Card:");
+      if (!promptedEmail || !promptedEmail.trim() || !promptedEmail.includes("@")) {
+        return;
+      }
+      targetEmail = promptedEmail.trim();
+      setEmail(targetEmail);
     }
 
     setEmailSending(true);
@@ -527,7 +525,7 @@ export default function PersonaQuiz() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: email.trim(),
+          email: targetEmail,
           name: personaResult?.name || name,
           branch: personaResult?.branch,
           personaTitle: personaResult?.personaTitle,
@@ -545,12 +543,12 @@ export default function PersonaQuiz() {
       if (response.ok && data.success) {
         setEmailStatus({
           success: true,
-          message: `🎉 Welcome email with your Persona Card sent to ${email}! Check your inbox.`
+          message: `🎉 Persona Card sent to ${targetEmail}!`
         });
       } else {
         setEmailStatus({
           success: false,
-          message: data.error || "Could not send email right now. You can still download your Persona Card PNG below!"
+          message: data.error || "Failed to send email. You can still download your Persona Card PNG below!"
         });
       }
     } catch (err) {
@@ -626,14 +624,14 @@ export default function PersonaQuiz() {
                   />
                 </div>
 
-                {/* Email Input */}
+                {/* Email Input (Optional) */}
                 <div>
                   <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-300 mb-2 flex items-center gap-2">
-                    <Mail size={16} className="text-cyan-400" /> Personal Email ID
+                    <Mail size={16} className="text-cyan-400" /> Personal Email ID <span className="text-[11px] font-normal text-slate-400 lowercase">(optional)</span>
                   </label>
                   <input
                     type="email"
-                    placeholder="e.g. aarav.bt25cse@pec.edu.in"
+                    placeholder="e.g. aarav.bt25cse@pec.edu.in (optional)"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     autoCorrect="off"
