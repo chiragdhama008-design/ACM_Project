@@ -629,55 +629,135 @@ app.post(["/api/persona/send-email", "/api/send-persona-email"], async (req, res
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #020612; color: #ffffff; padding: 20px; margin: 0; }
-    .card-container { max-width: 600px; margin: 0 auto; background: #050d24; border: 1px solid #00F0FF; border-radius: 20px; padding: 30px; }
-    .header { text-align: center; border-bottom: 1px solid #1e293b; padding-bottom: 20px; margin-bottom: 25px; }
-    .title { color: #00F0FF; font-size: 14px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; }
-    .student-name { font-size: 26px; font-weight: 900; color: #ffffff; margin: 8px 0; }
-    .persona-box { background: linear-gradient(135deg, #0d2260, #280b54); border: 1px solid #00F0FF; border-radius: 12px; padding: 15px; margin: 20px 0; text-align: center; }
-    .persona-title { font-size: 22px; font-weight: bold; color: #FFD700; }
-    .wing-box { background: #081538; border: 1px solid rgba(0,240,255,0.4); border-radius: 12px; padding: 16px; margin: 15px 0; }
-    .metrics { background: #030818; border-radius: 12px; padding: 15px; margin: 20px 0; }
-    .metric-row { display: flex; justify-content: space-between; margin: 8px 0; font-size: 14px; }
-    .footer { text-align: center; color: #64748b; font-size: 12px; margin-top: 30px; border-top: 1px solid #1e293b; padding-top: 15px; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #020612; color: #ffffff; padding: 0; margin: 0; }
+    .wrapper { background-color: #020612; padding: 30px 15px; }
+    .card-container { max-width: 620px; margin: 0 auto; background: linear-gradient(135deg, #050d24 0%, #0a1a3f 100%); border: 1px solid rgba(0,240,255,0.3); border-radius: 24px; padding: 0; overflow: hidden; }
+    .hero-banner { background: linear-gradient(135deg, #0075FF 0%, #00F0FF 50%, #7000FF 100%); padding: 35px 30px; text-align: center; }
+    .hero-banner h1 { font-size: 28px; font-weight: 900; color: #ffffff; margin: 0 0 6px 0; text-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+    .hero-subtitle { color: rgba(255,255,255,0.9); font-size: 14px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin: 0; }
+    .content { padding: 30px; }
+    .greeting { font-size: 22px; font-weight: 800; color: #ffffff; margin: 0 0 15px 0; }
+    .welcome-text { color: #cbd5e1; font-size: 15px; line-height: 1.7; margin: 0 0 20px 0; }
+    .highlight { color: #00F0FF; font-weight: 700; }
+    .warm-msg { background: linear-gradient(135deg, #0c1e4a 0%, #1a0d3e 100%); border-left: 4px solid #00F0FF; border-radius: 0 12px 12px 0; padding: 18px 20px; margin: 20px 0; color: #e2e8f0; font-size: 14px; line-height: 1.7; }
+    .persona-box { background: linear-gradient(135deg, #0d2260, #280b54); border: 1px solid rgba(255,215,0,0.4); border-radius: 16px; padding: 20px; margin: 25px 0; text-align: center; }
+    .persona-label { color: #F59E0B; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; margin: 0 0 8px 0; }
+    .persona-title { font-size: 24px; font-weight: 900; color: #FFD700; margin: 0; }
+    .wing-box { background: #081538; border: 1px solid rgba(0,240,255,0.35); border-radius: 14px; padding: 18px; margin: 20px 0; }
+    .wing-label { color: #00F0FF; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+    .wing-name { color: #ffffff; font-size: 18px; font-weight: 900; margin: 4px 0; }
+    .wing-desc { color: #94a3b8; font-size: 13px; line-height: 1.5; margin: 8px 0 0 0; }
+    .metrics { background: #030818; border: 1px solid #1e293b; border-radius: 14px; padding: 18px; margin: 20px 0; }
+    .metrics-title { color: #64748b; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 12px 0; }
+    .metric-row { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; font-size: 14px; }
+    .metric-bar-bg { flex: 1; height: 8px; background: #1e293b; border-radius: 4px; margin: 0 12px; overflow: hidden; }
+    .card-image-section { text-align: center; margin: 25px 0; padding: 20px; background: #030818; border-radius: 14px; border: 1px solid #1e293b; }
+    .cta-section { background: linear-gradient(135deg, #0075FF 0%, #00F0FF 100%); border-radius: 14px; padding: 20px; margin: 25px 0; text-align: center; }
+    .cta-section p { color: #020612; font-size: 14px; font-weight: 700; margin: 0; }
+    .divider { height: 1px; background: linear-gradient(90deg, transparent, rgba(0,240,255,0.3), transparent); margin: 25px 0; }
+    .footer { text-align: center; padding: 25px 30px; border-top: 1px solid #1e293b; }
+    .footer p { color: #475569; font-size: 12px; margin: 4px 0; }
+    .footer .brand { color: #00F0FF; font-weight: 700; font-size: 13px; }
   </style>
 </head>
 <body>
-  <div class="card-container">
-    <div class="header">
-      <div class="title">PEC ACM STUDENT CHAPTER</div>
-      <div class="student-name">Hey ${name || "PEC Student"}! 👋</div>
-      <p style="color: #94a3b8; font-size: 14px; margin: 0;">Here is your official PEC ACM Persona Card from the fresher quiz!</p>
-    </div>
+  <div class="wrapper">
+    <div class="card-container">
 
-    <div class="persona-box">
-      <div style="color: #F59E0B; font-size: 11px; font-weight: bold; text-transform: uppercase;">👑 Official ACM Persona Title</div>
-      <div class="persona-title">"${personaTitle || "Full-Stack Phantom"}"</div>
-    </div>
+      <!-- Hero Banner -->
+      <div class="hero-banner">
+        <div class="hero-subtitle">PEC ACM Student Chapter • CSS Wing</div>
+        <h1>Welcome to the ACM Family! 🎉</h1>
+      </div>
 
-    <div class="wing-box">
-      <div style="color: #00F0FF; font-size: 12px; font-weight: bold;">🎯 RECOMMENDED WING: <span style="color: #ffffff; font-size: 16px;">${recommendedWing || "ACM-Dev"}</span></div>
-      <p style="color: #cbd5e1; font-size: 13px; margin: 8px 0 0 0;">${wingDescription || "Practical problem solver built for PEC Chandigarh tech ecosystem!"}</p>
-    </div>
+      <div class="content">
+        <!-- Personal Greeting -->
+        <p class="greeting">Hey ${name || "Future Techie"}! 👋✨</p>
 
-    <div class="metrics">
-      <div style="color: #94a3b8; font-size: 11px; font-weight: bold; margin-bottom: 10px;">📊 TECH APTITUDE BREAKDOWN:</div>
-      <div class="metric-row"><span style="color: #3b82f6;">• CP Logic:</span> <strong>${cpScore ?? 75}%</strong></div>
-      <div class="metric-row"><span style="color: #a855f7;">• Machine Learning:</span> <strong>${mlScore ?? 80}%</strong></div>
-      <div class="metric-row"><span style="color: #00F0FF;">• Software Dev:</span> <strong>${devScore ?? 85}%</strong></div>
-      <div class="metric-row"><span style="color: #10b981;">• Cybersecurity:</span> <strong>${cyberScore ?? 70}%</strong></div>
-    </div>
+        <p class="welcome-text">
+          Congratulations on joining <span class="highlight">Punjab Engineering College, Chandigarh</span> — one of India's most prestigious engineering institutions! 🏛️
+        </p>
 
-    ${cardImageBase64 ? `
-    <div style="text-align: center; margin: 25px 0;">
-      <p style="color: #94a3b8; font-size: 12px; margin-bottom: 10px;">📸 Your High-Definition Persona Scorecard is attached below!</p>
-      <img src="cid:${imageCid}" alt="PEC ACM Persona Card" style="max-width: 100%; border-radius: 12px; border: 1px solid #00F0FF;" />
-    </div>` : ''}
+        <p class="welcome-text">
+          On behalf of the entire <span class="highlight">ACM-CSS (Computer Science Society)</span> team, we're thrilled to welcome you to the PEC family. Your college journey is about to get incredible, and we can't wait to be a part of it!
+        </p>
 
-    <div class="footer">
-      <p>Sent with 💙 by <strong>PEC ACM Student Chapter</strong></p>
-      <p style="color: #475569;">Punjab Engineering College (PEC Chandigarh) • Session 2026-27</p>
+        <!-- Warm Welcome Message -->
+        <div class="warm-msg">
+          🌟 <strong>A message from the ACM-CSS team:</strong><br><br>
+          PEC is more than just classes and exams — it's where you'll build lifelong friendships, hack through all-nighters, debate over Nescafé patties, and create things that genuinely matter. Whether you're a coder, a thinker, a builder, or someone who's just curious about tech — <strong>you belong here</strong>.<br><br>
+          ACM-CSS is your home for everything tech at PEC. From competitive programming marathons to hackathons, ML workshops to cybersecurity CTFs — we've got something incredible waiting for you. 💙
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Persona Result -->
+        <p class="welcome-text" style="text-align: center; font-weight: 600;">
+          🎯 Based on your quiz responses, here's your official ACM Persona:
+        </p>
+
+        <div class="persona-box">
+          <p class="persona-label">👑 Your Official ACM Persona Title</p>
+          <p class="persona-title">"${personaTitle || "Full-Stack Phantom"}"</p>
+        </div>
+
+        <div class="wing-box">
+          <p class="wing-label">🎯 Recommended PEC ACM Wing</p>
+          <p class="wing-name">${recommendedWing || "ACM-Dev"}</p>
+          <p class="wing-desc">${wingDescription || "A practical problem solver built for the PEC Chandigarh tech ecosystem!"}</p>
+        </div>
+
+        <!-- Tech Scores -->
+        <div class="metrics">
+          <p class="metrics-title">📊 Your Tech Aptitude Breakdown</p>
+          <div class="metric-row">
+            <span style="color: #3b82f6; font-weight: 600;">💻 CP Logic</span>
+            <strong style="color: #ffffff;">${cpScore ?? 75}%</strong>
+          </div>
+          <div class="metric-row">
+            <span style="color: #a855f7; font-weight: 600;">🧠 Machine Learning</span>
+            <strong style="color: #ffffff;">${mlScore ?? 80}%</strong>
+          </div>
+          <div class="metric-row">
+            <span style="color: #06b6d4; font-weight: 600;">🛠️ Software Dev</span>
+            <strong style="color: #ffffff;">${devScore ?? 85}%</strong>
+          </div>
+          <div class="metric-row">
+            <span style="color: #10b981; font-weight: 600;">🔒 Cybersecurity</span>
+            <strong style="color: #ffffff;">${cyberScore ?? 70}%</strong>
+          </div>
+        </div>
+
+        ${cardImageBase64 ? `
+        <!-- Persona Card Image -->
+        <div class="card-image-section">
+          <p style="color: #94a3b8; font-size: 13px; margin: 0 0 15px 0;">📸 Your High-Definition Persona Card (also attached as PNG):</p>
+          <img src="cid:${imageCid}" alt="PEC ACM Persona Card for ${name}" style="max-width: 100%; border-radius: 12px; border: 1px solid rgba(0,240,255,0.3);" />
+        </div>` : ''}
+
+        <div class="divider"></div>
+
+        <!-- CTA -->
+        <div class="cta-section">
+          <p>🚀 Share your Persona Card with friends and tag us on socials!</p>
+          <p style="margin-top: 8px; font-weight: 900; font-size: 15px;">We can't wait to see you at PEC! 💙</p>
+        </div>
+
+        <p class="welcome-text" style="text-align: center; margin-top: 20px;">
+          See you around campus, <span class="highlight">${name || "fresher"}</span>! Whether it's at the CC Lab, Nescafé, or an ACM workshop — let's build something amazing together. 🤝
+        </p>
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        <p class="brand">PEC ACM Student Chapter — CSS Wing</p>
+        <p>Punjab Engineering College (Deemed to be University), Chandigarh</p>
+        <p>Session 2025–2029 • Sent with 💙 by the ACM-CSS Team</p>
+      </div>
+
     </div>
   </div>
 </body>
@@ -695,9 +775,9 @@ app.post(["/api/persona/send-email", "/api/send-persona-email"], async (req, res
     }
 
     await transporter.sendMail({
-      from: `"PEC ACM Student Chapter" <${senderEmail}>`,
+      from: `"ACM-CSS PEC Chandigarh" <${senderEmail}>`,
       to: email,
-      subject: `🎓 Your Official PEC ACM Persona Card! (${name || "Student"})`,
+      subject: `🎉 Welcome to PEC & ACM-CSS, ${name || "Future Techie"}! Here's Your Persona Card 🚀`,
       html: htmlContent,
       attachments
     });
