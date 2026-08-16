@@ -56,7 +56,7 @@ export default function WelcomeLanding() {
 
         {/* Subtitle */}
         <p className="max-w-3xl mx-auto text-base sm:text-xl text-blue-100/90 font-medium leading-relaxed mb-10">
-          Open for all PEC Chandigarh students — <strong className="text-cyan-300">Day Scholars & Hostellers</strong>! Answer 2 quick fun campus questions to get your personalized <strong className="text-cyan-300 font-extrabold">PEC Tech Persona Card</strong> emailed straight to you! 🎓
+          Open for all PEC Chandigarh students — <strong className="text-cyan-300">Day Scholars & Hostellers</strong>! Answer two quick fun campus questions to get your personalized <strong className="text-cyan-300 font-extrabold">PEC Tech Persona Card</strong> emailed straight to you! 🎓
         </p>
 
         {/* PRIMARY LAUNCH BUTTON */}
