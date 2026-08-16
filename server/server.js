@@ -589,10 +589,11 @@ Return ONLY valid JSON (no markdown fences, no backticks):
 });
 
 /**
- * 📧 SEND PERSONA CARD VIA EMAIL (Resend API)
+ * 📧 SEND PERSONA CARD VIA EMAIL (Smart Dual Provider: Gmail SMTP or Resend)
  * Sends student's persona card + warm ACM-CSS welcome email automatically.
- * From: ACM-CSS PEC (via Resend)  →  To: user's personal email
- * Persona card PNG is auto-attached.
+ * 
+ * Provider 1: Gmail SMTP (GMAIL_APP_PASSWORD) -> Sends directly from chirag.dhama008@gmail.com to ANY student!
+ * Provider 2: Resend API (RESEND_API_KEY) -> Sends via Resend.
  */
 app.post(["/api/persona/send-email", "/api/send-persona-email"], async (req, res) => {
   const { email, name, branch, personaTitle, recommendedWing, wingDescription, cpScore, mlScore, devScore, cyberScore, cardImageBase64 } = req.body;
@@ -601,36 +602,24 @@ app.post(["/api/persona/send-email", "/api/send-persona-email"], async (req, res
     return res.status(400).json({ success: false, error: "Please provide a valid email address." });
   }
 
+  const gmailAppPassword = process.env.GMAIL_APP_PASSWORD || process.env.EMAIL_PASSWORD;
   const resendApiKey = process.env.RESEND_API_KEY;
+  const senderEmail = process.env.SENDER_EMAIL || "chirag.dhama008@gmail.com";
 
-  if (!resendApiKey) {
-    console.warn("⚠️ RESEND_API_KEY not set in environment. Email payload logged to console.");
-    console.log(`[Email to ${email}]: Persona Card for ${name} (${recommendedWing})`);
+  if (!gmailAppPassword && !resendApiKey) {
+    console.warn("⚠️ Neither GMAIL_APP_PASSWORD nor RESEND_API_KEY set in environment.");
+    console.log(`[Email simulation to ${email}]: Persona Card for ${name} (${recommendedWing})`);
     return res.json({
       success: true,
-      notice: "Persona Card generated! (Add RESEND_API_KEY in environment for direct inbox dispatch)",
+      notice: "Persona Card generated! (Add GMAIL_APP_PASSWORD or RESEND_API_KEY in Render environment for direct inbox dispatch)",
       recipient: email
     });
   }
 
-  try {
-    const { Resend } = await import("resend");
-    const resend = new Resend(resendApiKey);
+  const cleanBase64 = cardImageBase64 ? cardImageBase64.replace(/^data:image\/\w+;base64,/, "") : null;
+  const attachmentFilename = `${(name || "PEC_Student").replace(/\s+/g, "_")}_ACM_Persona_Card.png`;
 
-    // Prepare attachment from base64 card image
-    const attachments = [];
-    if (cardImageBase64) {
-      const cleanBase64 = cardImageBase64.replace(/^data:image\/\w+;base64,/, "");
-      attachments.push({
-        filename: `${(name || "PEC_Student").replace(/\s+/g, "_")}_ACM_Persona_Card.png`,
-        content: Buffer.from(cleanBase64, "base64")
-      });
-    }
-
-    // The sender address — use your verified Resend domain, or the default onboarding address
-    const fromAddress = process.env.RESEND_FROM_EMAIL || "ACM-CSS PEC <onboarding@resend.dev>";
-
-    const htmlContent = `
+  const htmlContent = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -765,24 +754,78 @@ app.post(["/api/persona/send-email", "/api/send-persona-email"], async (req, res
 </html>
 `;
 
-    const { data, error } = await resend.emails.send({
-      from: fromAddress,
-      to: [email.trim()],
-      subject: `🎉 Welcome to PEC & ACM-CSS, ${name || "Future Techie"}! Here's Your Persona Card 🚀`,
-      html: htmlContent,
-      attachments
-    });
+  try {
+    // METHOD 1: Direct Gmail SMTP (Sends straight from chirag.dhama008@gmail.com to ANY recipient!)
+    if (gmailAppPassword) {
+      const nodemailerModule = await import("nodemailer");
+      const nodemailer = nodemailerModule.default || nodemailerModule;
 
-    if (error) {
-      console.error("Resend API error:", error);
-      return res.status(500).json({ success: false, error: error.message || "Failed to send email via Resend." });
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: senderEmail,
+          pass: gmailAppPassword
+        }
+      });
+
+      const emailAttachments = [];
+      if (cleanBase64) {
+        emailAttachments.push({
+          filename: attachmentFilename,
+          content: Buffer.from(cleanBase64, "base64")
+        });
+      }
+
+      await transporter.sendMail({
+        from: `"Chirag Dhama (PEC ACM)" <${senderEmail}>`,
+        to: email.trim(),
+        replyTo: senderEmail,
+        subject: `🎉 Welcome to PEC & ACM-CSS, ${name || "Future Techie"}! Here's Your Persona Card 🚀`,
+        html: htmlContent,
+        attachments: emailAttachments
+      });
+
+      console.log(`✅ Welcome email sent from ${senderEmail} to ${email} via Gmail SMTP!`);
+      return res.json({ success: true, message: `Welcome email with Persona Card sent to ${email}!` });
     }
 
-    console.log(`✅ Welcome email sent to ${email} via Resend (ID: ${data?.id})`);
-    res.json({ success: true, message: `Welcome email with Persona Card sent to ${email}!` });
+    // METHOD 2: Resend API
+    if (resendApiKey) {
+      const { Resend } = await import("resend");
+      const resend = new Resend(resendApiKey);
+
+      const resendAttachments = [];
+      if (cleanBase64) {
+        resendAttachments.push({
+          filename: attachmentFilename,
+          content: Buffer.from(cleanBase64, "base64")
+        });
+      }
+
+      const fromAddress = process.env.RESEND_FROM_EMAIL || "Chirag Dhama (PEC ACM) <onboarding@resend.dev>";
+      const replyToAddress = process.env.REPLY_TO_EMAIL || senderEmail;
+
+      const { data, error } = await resend.emails.send({
+        from: fromAddress,
+        to: [email.trim()],
+        reply_to: replyToAddress,
+        subject: `🎉 Welcome to PEC & ACM-CSS, ${name || "Future Techie"}! Here's Your Persona Card 🚀`,
+        html: htmlContent,
+        attachments: resendAttachments
+      });
+
+      if (error) {
+        console.error("Resend API error:", error);
+        return res.status(500).json({ success: false, error: error.message || "Failed to send email via Resend." });
+      }
+
+      console.log(`✅ Welcome email sent to ${email} via Resend (ID: ${data?.id})`);
+      return res.json({ success: true, message: `Welcome email with Persona Card sent to ${email}!` });
+    }
+
   } catch (emailErr) {
     console.error("Failed to send persona card email:", emailErr);
-    res.status(500).json({ success: false, error: "Failed to send email. Please check RESEND_API_KEY configuration." });
+    res.status(500).json({ success: false, error: "Failed to send email. Please verify email credentials." });
   }
 });
 
