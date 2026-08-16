@@ -563,53 +563,7 @@ ${email}`
   } finally {
     setEmailSending(false);
   }
-}; {
-    if (!email || !email.includes("@")) {
-    setEmailSending(true);
-    setEmailStatus(null);
-
-    try {
-      const cardImageDataUrl = generateCardDataUrl(personaResult);
-
-      const response = await fetch(`${API_URL}/api/persona/send-email`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: email.trim(),
-          name: personaResult?.name,
-          branch: personaResult?.branch,
-          personaTitle: personaResult?.personaTitle,
-          recommendedWing: personaResult?.recommendedWing,
-          wingDescription: personaResult?.wingDescription,
-          cpScore: personaResult?.cpScore,
-          mlScore: personaResult?.mlScore,
-          devScore: personaResult?.devScore,
-          cyberScore: personaResult?.cyberScore,
-          cardImageBase64: cardImageDataUrl
-        })
-      });
-
-      const data = await response.json();
-      if (response.ok && data.success) {
-        setEmailStatus({
-          success: true,
-          message: `🎉 Persona card sent to ${email}! Check your inbox.`
-        });
-      } else {
-        setEmailStatus({
-          success: false,
-          message: data.error || "Could not send email right now. You can still download your PNG card below!"
-        });
-      }
-    } catch (err) {
-      setEmailStatus({
-        success: false,
-        message: "Email service temporarily unavailable. Please download your card PNG below!"
-      });
-    } finally {
-      setEmailSending(false);
-    }
-  };
+};
 
   // Fun Quick Idea Suggestions for PEC Chandigarh
   const getPills = () => {
