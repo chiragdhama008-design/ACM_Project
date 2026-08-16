@@ -589,27 +589,28 @@ Return ONLY valid JSON (no markdown fences, no backticks):
 });
 
 /**
- * 📧 SEND PERSONA CARD VIA EMAIL (Resend API)
- * Sends student's persona card + warm ACM-CSS welcome email automatically using Resend.
- * Persona card PNG is auto-attached as a file attachment.
+ * 📧 SEND PERSONA CARD VIA EMAIL
+ * Uses Brevo (Sendinblue) HTTP REST API / Resend API
+ * 100% HTTPS REST API — Never gets blocked by Render firewalls or cloud hosting!
  */
 app.post(["/api/persona/send-email", "/api/send-persona-email"], async (req, res) => {
   const { email, name, branch, personaTitle, recommendedWing, wingDescription, cpScore, mlScore, devScore, cyberScore, cardImageBase64 } = req.body;
 
   if (!email || !email.includes("@")) {
-    return res.status(400).json({ success: false, error: "Please provide a valid email address." });
+    return res.status(400).json({ success: false, error: "Please provide a valid recipient email address." });
   }
 
+  const brevoApiKey = process.env.BREVO_API_KEY;
   const resendApiKey = process.env.RESEND_API_KEY;
+  const senderEmail = process.env.SENDER_EMAIL || "chirag.dhama008@gmail.com";
+  const senderName = "Chirag Dhama (PEC ACM)";
 
-  if (!resendApiKey) {
-    console.warn("⚠️ RESEND_API_KEY not set in environment.");
-    console.log(`[Email simulation to ${email}]: Persona Card for ${name} (${recommendedWing})`);
-    return res.json({
-      success: true,
-      notice: "Persona Card generated! (Add RESEND_API_KEY in Render environment to send to your inbox)",
-      recipient: email
-    });
+  console.log(`📨 Sending Persona Card email to: ${email}`);
+
+  if (!brevoApiKey && !resendApiKey) {
+    const errorMsg = "No API key configured. Please set BREVO_API_KEY (or RESEND_API_KEY) in Render environment variables.";
+    console.error(`❌ ${errorMsg}`);
+    return res.status(500).json({ success: false, error: errorMsg });
   }
 
   const cleanBase64 = cardImageBase64 ? cardImageBase64.replace(/^data:image\/\w+;base64,/, "") : null;
@@ -751,42 +752,94 @@ app.post(["/api/persona/send-email", "/api/send-persona-email"], async (req, res
 `;
 
   try {
-    const { Resend } = await import("resend");
-    const resend = new Resend(resendApiKey);
+    // 1. PRIMARY: Brevo HTTP REST API (Works on Render without SMTP port blocks & without custom DNS)
+    if (brevoApiKey) {
+      console.log(`🚀 Dispatching via Brevo REST API from ${senderEmail} to ${email}...`);
 
-    const attachments = [];
-    if (cleanBase64) {
-      attachments.push({
-        filename: attachmentFilename,
-        content: Buffer.from(cleanBase64, "base64")
+      const brevoPayload = {
+        sender: { name: senderName, email: senderEmail },
+        to: [{ email: email.trim(), name: name || "PEC Student" }],
+        replyTo: { email: senderEmail, name: senderName },
+        subject: `🎉 Welcome to PEC & ACM-CSS, ${name || "Future Techie"}! Here's Your Persona Card 🚀`,
+        htmlContent: htmlContent
+      };
+
+      if (cleanBase64) {
+        brevoPayload.attachment = [
+          {
+            name: attachmentFilename,
+            content: cleanBase64
+          }
+        ];
+      }
+
+      const brevoResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "api-key": brevoApiKey
+        },
+        body: JSON.stringify(brevoPayload)
       });
+
+      const brevoData = await brevoResponse.json();
+
+      if (!brevoResponse.ok) {
+        console.error("❌ Brevo API error:", brevoData);
+        return res.status(500).json({ 
+          success: false, 
+          error: brevoData.message || "Failed to send email via Brevo." 
+        });
+      }
+
+      console.log(`✅ Email sent to ${email} via Brevo! MessageId: ${brevoData.messageId}`);
+      return res.json({ success: true, message: `Welcome email with Persona Card sent to ${email}!` });
     }
 
-    const fromAddress = process.env.RESEND_FROM_EMAIL || "Chirag Dhama (PEC ACM) <onboarding@resend.dev>";
-    const replyToAddress = process.env.REPLY_TO_EMAIL || "chirag.dhama008@gmail.com";
+    // 2. FALLBACK: Resend API
+    if (resendApiKey) {
+      console.log(`🚀 Dispatching via Resend API to ${email}...`);
+      const { Resend } = await import("resend");
+      const resend = new Resend(resendApiKey);
 
-    const { data, error } = await resend.emails.send({
-      from: fromAddress,
-      to: [email.trim()],
-      reply_to: replyToAddress,
-      subject: `🎉 Welcome to PEC & ACM-CSS, ${name || "Future Techie"}! Here's Your Persona Card 🚀`,
-      html: htmlContent,
-      attachments
-    });
+      const attachments = [];
+      if (cleanBase64) {
+        attachments.push({
+          filename: attachmentFilename,
+          content: Buffer.from(cleanBase64, "base64")
+        });
+      }
 
-    if (error) {
-      console.error("Resend API error:", error);
-      return res.status(500).json({ 
-        success: false, 
-        error: error.message || "Failed to send email via Resend." 
+      const fromAddress = process.env.RESEND_FROM_EMAIL || `${senderName} <onboarding@resend.dev>`;
+
+      const { data, error } = await resend.emails.send({
+        from: fromAddress,
+        to: [email.trim()],
+        reply_to: senderEmail,
+        subject: `🎉 Welcome to PEC & ACM-CSS, ${name || "Future Techie"}! Here's Your Persona Card 🚀`,
+        html: htmlContent,
+        attachments
       });
+
+      if (error) {
+        console.error("❌ Resend API returned error:", error);
+        return res.status(500).json({ 
+          success: false, 
+          error: `Resend error: ${error.message}` 
+        });
+      }
+
+      console.log(`✅ Email sent to ${email} via Resend (ID: ${data?.id})`);
+      return res.json({ success: true, message: `Welcome email with Persona Card sent to ${email}!` });
     }
 
-    console.log(`✅ Welcome email sent to ${email} via Resend (ID: ${data?.id})`);
-    return res.json({ success: true, message: `Welcome email with Persona Card sent to ${email}!` });
   } catch (emailErr) {
-    console.error("Failed to send persona card email:", emailErr);
-    res.status(500).json({ success: false, error: "Failed to send email. Please check your Resend API configuration." });
+    console.error("❌ Email dispatch failed with exception:", emailErr);
+    res.status(500).json({ 
+      success: false, 
+      error: `Failed to send email: ${emailErr.message || emailErr}` 
+    });
   }
 });
 
