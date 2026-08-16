@@ -380,7 +380,7 @@ export default function PersonaQuiz() {
         return;
       }
       if (!email.trim() || !email.includes("@")) {
-        alert("Please enter your PEC email ID (e.g. yourname.bt25cse@pec.edu.in) so we can send your Persona Card!");
+        alert("Please enter your personal email ID so we can send your Persona Card!");
         return;
       }
       setStep("q1");
@@ -507,12 +507,64 @@ export default function PersonaQuiz() {
   };
 
   // Send Persona Card via Email
-  const handleSendEmail = async () => {
+  // Send Persona Card via Email (client-side)
+const handleSendEmail = async () => {
+  // Ensure a valid email
+  if (!email || !email.includes("@")) {
+    setEmailStatus({
+      success: false,
+      message: "Please enter a valid personal email address."
+    });
+    return;
+  }
+
+  setEmailSending(true);
+  setEmailStatus(null);
+
+  try {
+    // Generate card image data URL
+    const cardImageDataUrl = generateCardDataUrl(personaResult);
+
+    // Trigger download so user can attach the PNG manually
+    downloadCardAsImage(
+      "persona-card-export",
+      `${name.replace(/\s+/g, "_")}_PEC_ACM_Card.png`,
+      personaResult
+    );
+
+    // Prepare Gmail compose URL with pre-filled fields
+    const subject = encodeURIComponent("My PEC ACM Persona Card");
+    const body = encodeURIComponent(
+      `Hi ACM-CSS Team,
+
+Please find my PEC ACM Persona Card attached.
+
+Best regards,
+${name}
+${email}`
+    );
+
+    const gmailUrl = `https://mail.google.com/mail/u/0/?view=cm&fs=1&to=${encodeURIComponent(
+      email
+    )}&cc=${encodeURIComponent("chiragdhama.bt25cse@pec.edu.in")}&su=${subject}&body=${body}`;
+
+    // Open Gmail compose in a new tab
+    window.open(gmailUrl, "_blank");
+
+    setEmailStatus({
+      success: true,
+      message: "Gmail compose window opened. Attach the downloaded Persona Card PNG before sending."
+    });
+  } catch (err) {
+    setEmailStatus({
+      success: false,
+      message: "Failed to prepare email. Please try again."
+    });
+  } finally {
+    setEmailSending(false);
+  }
+}; {
     if (!email || !email.includes("@")) {
-      alert("Please enter a valid email address!");
-      return;
-    }
-    audioEngine.playClick();
     setEmailSending(true);
     setEmailStatus(null);
 
@@ -625,7 +677,7 @@ export default function PersonaQuiz() {
                 {/* Email Input */}
                 <div>
                   <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-300 mb-2 flex items-center gap-2">
-                    <Mail size={16} className="text-cyan-400" /> College Email ID
+                    <Mail size={16} className="text-cyan-400" /> Personal Email ID
                   </label>
                   <input
                     type="email"
