@@ -589,8 +589,10 @@ Return ONLY valid JSON (no markdown fences, no backticks):
 });
 
 /**
- * 📧 SEND PERSONA CARD VIA EMAIL
- * Sends student's generated persona card from chiragdhama.bt25cse@pec.edu.in directly to the user's email.
+ * 📧 SEND PERSONA CARD VIA EMAIL (Resend API)
+ * Sends student's persona card + warm ACM-CSS welcome email automatically.
+ * From: ACM-CSS PEC (via Resend)  →  To: user's personal email
+ * Persona card PNG is auto-attached.
  */
 app.post(["/api/persona/send-email", "/api/send-persona-email"], async (req, res) => {
   const { email, name, branch, personaTitle, recommendedWing, wingDescription, cpScore, mlScore, devScore, cyberScore, cardImageBase64 } = req.body;
@@ -599,31 +601,34 @@ app.post(["/api/persona/send-email", "/api/send-persona-email"], async (req, res
     return res.status(400).json({ success: false, error: "Please provide a valid email address." });
   }
 
-  const senderEmail = process.env.SENDER_EMAIL || "chiragdhama.bt25cse@pec.edu.in";
-  const appPassword = process.env.GMAIL_APP_PASSWORD || process.env.EMAIL_PASSWORD;
+  const resendApiKey = process.env.RESEND_API_KEY;
+
+  if (!resendApiKey) {
+    console.warn("⚠️ RESEND_API_KEY not set in environment. Email payload logged to console.");
+    console.log(`[Email to ${email}]: Persona Card for ${name} (${recommendedWing})`);
+    return res.json({
+      success: true,
+      notice: "Persona Card generated! (Add RESEND_API_KEY in environment for direct inbox dispatch)",
+      recipient: email
+    });
+  }
 
   try {
-    const nodemailerModule = await import("nodemailer");
-    const nodemailer = nodemailerModule.default || nodemailerModule;
+    const { Resend } = await import("resend");
+    const resend = new Resend(resendApiKey);
 
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: senderEmail,
-        pass: appPassword || ""
-      }
-    });
-
+    // Prepare attachment from base64 card image
     const attachments = [];
-    let imageCid = "personacard";
     if (cardImageBase64) {
       const cleanBase64 = cardImageBase64.replace(/^data:image\/\w+;base64,/, "");
       attachments.push({
-        filename: `${(name || "PEC_Student").replace(/\s+/g, "_")}_ACM_Card.png`,
-        content: Buffer.from(cleanBase64, "base64"),
-        cid: imageCid
+        filename: `${(name || "PEC_Student").replace(/\s+/g, "_")}_ACM_Persona_Card.png`,
+        content: Buffer.from(cleanBase64, "base64")
       });
     }
+
+    // The sender address — use your verified Resend domain, or the default onboarding address
+    const fromAddress = process.env.RESEND_FROM_EMAIL || "ACM-CSS PEC <onboarding@resend.dev>";
 
     const htmlContent = `
 <!DOCTYPE html>
@@ -653,7 +658,6 @@ app.post(["/api/persona/send-email", "/api/send-persona-email"], async (req, res
     .metrics { background: #030818; border: 1px solid #1e293b; border-radius: 14px; padding: 18px; margin: 20px 0; }
     .metrics-title { color: #64748b; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 12px 0; }
     .metric-row { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; font-size: 14px; }
-    .metric-bar-bg { flex: 1; height: 8px; background: #1e293b; border-radius: 4px; margin: 0 12px; overflow: hidden; }
     .card-image-section { text-align: center; margin: 25px 0; padding: 20px; background: #030818; border-radius: 14px; border: 1px solid #1e293b; }
     .cta-section { background: linear-gradient(135deg, #0075FF 0%, #00F0FF 100%); border-radius: 14px; padding: 20px; margin: 25px 0; text-align: center; }
     .cta-section p { color: #020612; font-size: 14px; font-weight: 700; margin: 0; }
@@ -731,12 +735,9 @@ app.post(["/api/persona/send-email", "/api/send-persona-email"], async (req, res
           </div>
         </div>
 
-        ${cardImageBase64 ? `
-        <!-- Persona Card Image -->
-        <div class="card-image-section">
-          <p style="color: #94a3b8; font-size: 13px; margin: 0 0 15px 0;">📸 Your High-Definition Persona Card (also attached as PNG):</p>
-          <img src="cid:${imageCid}" alt="PEC ACM Persona Card for ${name}" style="max-width: 100%; border-radius: 12px; border: 1px solid rgba(0,240,255,0.3);" />
-        </div>` : ''}
+        <p class="welcome-text" style="text-align: center; font-size: 13px; color: #94a3b8;">
+          📎 Your high-definition Persona Card is attached to this email as a PNG image!
+        </p>
 
         <div class="divider"></div>
 
@@ -764,28 +765,24 @@ app.post(["/api/persona/send-email", "/api/send-persona-email"], async (req, res
 </html>
 `;
 
-    if (!appPassword) {
-      console.warn("⚠️ GMAIL_APP_PASSWORD not set in environment. Email payload logged to console.");
-      console.log(`[Email to ${email}]: Persona Card for ${name} (${recommendedWing})`);
-      return res.json({
-        success: true,
-        notice: "Persona Card generated! (Add GMAIL_APP_PASSWORD in server/.env for direct inbox dispatch)",
-        recipient: email
-      });
-    }
-
-    await transporter.sendMail({
-      from: `"ACM-CSS PEC Chandigarh" <${senderEmail}>`,
-      to: email,
+    const { data, error } = await resend.emails.send({
+      from: fromAddress,
+      to: [email.trim()],
       subject: `🎉 Welcome to PEC & ACM-CSS, ${name || "Future Techie"}! Here's Your Persona Card 🚀`,
       html: htmlContent,
       attachments
     });
 
-    res.json({ success: true, message: `Persona card sent to ${email}!` });
+    if (error) {
+      console.error("Resend API error:", error);
+      return res.status(500).json({ success: false, error: error.message || "Failed to send email via Resend." });
+    }
+
+    console.log(`✅ Welcome email sent to ${email} via Resend (ID: ${data?.id})`);
+    res.json({ success: true, message: `Welcome email with Persona Card sent to ${email}!` });
   } catch (emailErr) {
     console.error("Failed to send persona card email:", emailErr);
-    res.status(500).json({ success: false, error: "Failed to send email. Please verify server SMTP configuration." });
+    res.status(500).json({ success: false, error: "Failed to send email. Please check RESEND_API_KEY configuration." });
   }
 });
 
