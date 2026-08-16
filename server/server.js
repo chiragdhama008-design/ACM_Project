@@ -416,11 +416,12 @@ Reply with ONLY valid JSON (NO markdown formatting, NO backticks):
  * - Deterministically assigns official ACM backend titles (NEVER hallucinated)
  */
 /**
- * 🎓 PEC ACM PERSONA AI EVALUATOR
- * Assigns official ACM titles strictly from the curated CP, AI/ML, and Dev categories:
+ * 🎓 PEC ACM PERSONA EVALUATOR
+ * Assigns official ACM titles strictly from the curated CP, ML, Dev, and CyberSec categories:
  * - Competitive Programming: The TLE Slayer, O(1) Brainiac, Codeforces Warlord, Binary Search Sorcerer, The Brute-Force Boss, Nested-Loop Legend, The Edge-Case Anarchist
- * - Machine Learning / AI: The Overfitting Whisperer, Neural Network Alchemist, Prompt Engineering Monarch, The Gradient Descendant, Dataset Architect, Epoch Enthusiast, Hallucination Handler
+ * - Machine Learning: The Overfitting Whisperer, Neural Network Alchemist, Prompt Engineering Monarch, The Gradient Descendant, Dataset Architect, Epoch Enthusiast, Hallucination Handler
  * - Software Development: Full-Stack Phantom, The Production Crasher, Git Merge Mastermind, Terminal Overlord, UI/UX Visionary, Scripting Ninja, The Coffee-to-Code Converter
+ * - Cybersecurity: The Firewall Phantom, SQL Injection Sensei, Bug Bounty Baron, The Ethical Hacker, Packet Sniffer Pro, CTF Gladiator, Script Kiddie Reborn
  */
 const DETERMINISTIC_ACM_TITLES = {
   "ACM-CP": [
@@ -432,7 +433,7 @@ const DETERMINISTIC_ACM_TITLES = {
     { minScore: 45, title: "Nested-Loop Legend", description: "Powers through heavy workloads one iterative loop at a time." },
     { minScore: 1,  title: "The Edge-Case Anarchist", description: "Finds bugs no one else thought of." }
   ],
-  "ACM-AI": [
+  "ACM-ML": [
     { minScore: 92, title: "The Overfitting Whisperer", description: "Trains models on pure intuition." },
     { minScore: 86, title: "Neural Network Alchemist", description: "Transmutes raw weights and activations into predictive intelligence." },
     { minScore: 80, title: "Prompt Engineering Monarch", description: "Commands foundation models and AI architectures with sovereign precision." },
@@ -449,6 +450,15 @@ const DETERMINISTIC_ACM_TITLES = {
     { minScore: 60, title: "UI/UX Visionary", description: "Cares about how it feels before how it runs." },
     { minScore: 45, title: "Scripting Ninja", description: "Automates workflows and stitches microservices together with stealth." },
     { minScore: 1,  title: "The Coffee-to-Code Converter", description: "Fuels high-output development cycles with pure caffeine and ambition." }
+  ],
+  "ACM-CyberSec": [
+    { minScore: 92, title: "The Firewall Phantom", description: "No packet passes without their blessing." },
+    { minScore: 86, title: "SQL Injection Sensei", description: "Breaks into databases just to show you how to fix them." },
+    { minScore: 80, title: "Bug Bounty Baron", description: "Gets paid to find what others can't see." },
+    { minScore: 75, title: "The Ethical Hacker", description: "Hacks for good, codes for justice." },
+    { minScore: 60, title: "Packet Sniffer Pro", description: "Reads network traffic like a bedtime story." },
+    { minScore: 45, title: "CTF Gladiator", description: "Lives for the thrill of Capture The Flag challenges." },
+    { minScore: 1,  title: "Script Kiddie Reborn", description: "Started with scripts, now they write exploits from scratch." }
   ]
 };
 
@@ -456,7 +466,7 @@ function resolveDeterministicTitle(wing, score, isAllGibberish = false, textComb
   if (isAllGibberish || score <= 0) {
     return {
       personaTitle: "Unassessed Candidate (No Valid Attempt)",
-      wingDescription: "No technical logic was provided. Submit thoughtful, structured solutions to unlock your official ACM Wing recommendation."
+      wingDescription: "No technical logic was provided. Submit thoughtful solutions to unlock your official ACM Wing recommendation."
     };
   }
 
@@ -469,13 +479,17 @@ function resolveDeterministicTitle(wing, score, isAllGibberish = false, textComb
     if (score < 85) {
       return { personaTitle: "The Edge-Case Anarchist", wingDescription: "Finds bugs no one else thought of." };
     }
-  } else if (wingKey === "ACM-AI" && (lowerText.includes("hallucinat") || lowerText.includes("creative") || lowerText.includes("generative") || lowerText.includes("wild"))) {
+  } else if (wingKey === "ACM-ML" && (lowerText.includes("hallucinat") || lowerText.includes("creative") || lowerText.includes("generative") || lowerText.includes("wild"))) {
     if (score < 85) {
-      return { personaTitle: "Hallucination Handler", wingDescription: "Turns AI chaotic energy into working features." };
+      return { personaTitle: "Hallucination Handler", wingDescription: "Turns chaotic energy into working features." };
     }
   } else if (wingKey === "ACM-Dev" && (lowerText.includes("coffee") || lowerText.includes("night") || lowerText.includes("hack") || lowerText.includes("fast"))) {
     if (score < 85 && score >= 50) {
       return { personaTitle: "The Coffee-to-Code Converter", wingDescription: "Fuels high-output development cycles with pure caffeine and ambition." };
+    }
+  } else if (wingKey === "ACM-CyberSec" && (lowerText.includes("script") || lowerText.includes("beginner") || lowerText.includes("learn") || lowerText.includes("start"))) {
+    if (score < 85 && score >= 40) {
+      return { personaTitle: "Script Kiddie Reborn", wingDescription: "Started with scripts, now they write exploits from scratch." };
     }
   }
 
@@ -494,44 +508,41 @@ function resolveDeterministicTitle(wing, score, isAllGibberish = false, textComb
 app.post("/api/persona/evaluate", async (req, res) => {
   const { name, branch, scenario1, answer1, scenario2, answer2 } = req.body;
 
-  const prompt = `You are a technical interviewer and evaluation coach for the PEC ACM Student Chapter.
-A student at Punjab Engineering College (PEC Chandigarh) has answered two real-world campus scenarios:
+  const prompt = `You are a friendly technical mentor for the PEC ACM Student Chapter at Punjab Engineering College (PEC Chandigarh).
+A fresher at PEC has answered two campus problem scenarios:
 
 Student Name: ${name || "Student"}
 Branch: ${branch || "Engineering"}
 
-Scenario 1 (Optimization & Queuing Logic): "${scenario1}"
-Candidate's Answer 1: "${answer1}"
+Question 1: "${scenario1}"
+Student's Answer 1: "${answer1}"
 
-Scenario 2 (Intelligent Systems & Automation): "${scenario2}"
-Candidate's Answer 2: "${answer2}"
+Question 2: "${scenario2}"
+Student's Answer 2: "${answer2}"
 
-Evaluate BOTH answers honestly and critically:
-1. GIBBERISH / FILLER / "IDK" DETECTION (CRITICAL):
-   - If an answer is "idk", "dont know", "no idea", filler, single words, keyboard mash, or nonsensical:
+Evaluate BOTH answers encourage-first:
+1. GIBBERISH / FILLER / "IDK" DETECTION:
+   - If an answer is "idk", "dont know", single random letters, or blank:
      - status: "GIBBERISH"
-     - focusBadge: "⚠️ No Score (0%): Filler / IDK Detected"
-     - thoughtCorrectly: "❌ No technical score awarded (0%): You provided a non-responsive answer ('idk' / filler). In technical screening, answers require logical breakdown or structured reasoning to earn domain marks."
-     - betterWay: "💡 How an engineer solves this scenario: [Provide a concrete, realistic engineering breakdown tailored to this exact scenario]"
+     - focusBadge: "⚠️ No Score: No Real Answer"
+     - thoughtCorrectly: "No score awarded: Non-responsive input ('idk'/filler). Try giving even a short 1-line idea to get points!"
+     - betterWay: "Give a simple practical idea that solves the bottleneck!"
      - SCORE MUST BE 0 for this question!
 2. OFF-TOPIC CONCEPT DETECTION:
-   - If an answer is completely misaligned or discusses unrelated topics:
-     - status: "OFF_TOPIC"
-     - focusBadge: "⚠️ Concept Mismatch (Off-Topic)"
-     - thoughtCorrectly: "⚠️ Concept mismatch (Low score awarded): Your answer does not address the core constraints and objectives of this technical scenario."
-     - betterWay: "💡 Reframing into an engineering solution: [Guide them on how to turn their concept into a proper automated/optimized system]"
-3. LEGITIMATE / COHERENT ATTEMPT:
-   - If the student made a genuine attempt:
-     - status: "VALID"
-     - focusBadge: "Short 2-3 word technical badge"
-     - thoughtCorrectly: "Highlight what was practical, clever, or resourceful in their exact idea."
-     - betterWay: "Provide actionable engineering tips to elevate their solution to a higher standard ('You thought this correctly, but it could have been done even better by...')."
+   - status: "OFF_TOPIC"
+   - focusBadge: "⚠️ Off-Topic Answer"
+   - thoughtCorrectly: "Creative thought, but doesn't quite tackle the question."
+   - betterWay: "Connect your idea directly to solving the campus problem."
+3. LEGITIMATE ATTEMPT:
+   - status: "VALID"
+   - focusBadge: "Short 2-3 word badge with emoji"
+   - thoughtCorrectly: "Compliment their specific idea and explain why it shows good thinking."
+   - betterWay: "Give an inspiring tip to make it even more awesome."
 
 SCORING RULES (0-98):
-- If BOTH answers are GIBBERISH / IDK: cpScore = 0, aiScore = 0, devScore = 0.
-- If Answer 1 is GIBBERISH / IDK: cpScore = 0.
-- If Answer 2 is GIBBERISH / IDK: aiScore = 0.
-- For legitimate answers, score them honestly based on demonstrated problem solving (CP: 40-98, AI: 40-98, Dev: 40-98).
+- If BOTH answers are GIBBERISH: cpScore = 0, mlScore = 0, devScore = 0, cyberScore = 0.
+- Otherwise score across 4 wings: CP (logic/queues/algorithms), ML (data/prediction/smart tools), Dev (apps/websites/hardware), CyberSec (security/hacks/defense/privacy).
+- recommendedWing must be one of: "ACM-CP" | "ACM-ML" | "ACM-Dev" | "ACM-CyberSec"
 
 Return ONLY valid JSON (no markdown fences, no backticks):
 {
@@ -547,10 +558,11 @@ Return ONLY valid JSON (no markdown fences, no backticks):
     "thoughtCorrectly": "string",
     "betterWay": "string"
   },
-  "recommendedWing": "ACM-CP" | "ACM-AI" | "ACM-Dev",
+  "recommendedWing": "ACM-CP" | "ACM-ML" | "ACM-Dev" | "ACM-CyberSec",
   "cpScore": <number 0-98>,
-  "aiScore": <number 0-98>,
-  "devScore": <number 0-98>
+  "mlScore": <number 0-98>,
+  "devScore": <number 0-98>,
+  "cyberScore": <number 0-98>
 }`;
 
   try {
@@ -560,7 +572,7 @@ Return ONLY valid JSON (no markdown fences, no backticks):
     // Apply strict deterministic titles
     const isAllGibberish = result.feedbackQ1?.status === "GIBBERISH" && result.feedbackQ2?.status === "GIBBERISH";
     const dominantWing = result.recommendedWing || "ACM-Dev";
-    const maxScore = Math.max(result.cpScore || 0, result.aiScore || 0, result.devScore || 0);
+    const maxScore = Math.max(result.cpScore || 0, result.mlScore || 0, result.devScore || 0, result.cyberScore || 0);
 
     const combinedAnswers = `${answer1 || ""} ${answer2 || ""}`;
     const titleInfo = resolveDeterministicTitle(dominantWing, maxScore, isAllGibberish, combinedAnswers);
@@ -572,7 +584,128 @@ Return ONLY valid JSON (no markdown fences, no backticks):
     });
   } catch (error) {
     console.error("Persona evaluation fallback error:", error);
-    res.status(500).json({ error: "AI evaluation fallback" });
+    res.status(500).json({ error: "Evaluation fallback" });
+  }
+});
+
+/**
+ * 📧 SEND PERSONA CARD VIA EMAIL
+ * Sends student's generated persona card from chiragdhama.bt25cse@pec.edu.in directly to the user's email.
+ */
+app.post(["/api/persona/send-email", "/api/send-persona-email"], async (req, res) => {
+  const { email, name, branch, personaTitle, recommendedWing, wingDescription, cpScore, mlScore, devScore, cyberScore, cardImageBase64 } = req.body;
+
+  if (!email || !email.includes("@")) {
+    return res.status(400).json({ success: false, error: "Please provide a valid email address." });
+  }
+
+  const senderEmail = process.env.SENDER_EMAIL || "chiragdhama.bt25cse@pec.edu.in";
+  const appPassword = process.env.GMAIL_APP_PASSWORD || process.env.EMAIL_PASSWORD;
+
+  try {
+    const nodemailerModule = await import("nodemailer");
+    const nodemailer = nodemailerModule.default || nodemailerModule;
+
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: senderEmail,
+        pass: appPassword || ""
+      }
+    });
+
+    const attachments = [];
+    let imageCid = "personacard";
+    if (cardImageBase64) {
+      const cleanBase64 = cardImageBase64.replace(/^data:image\/\w+;base64,/, "");
+      attachments.push({
+        filename: `${(name || "PEC_Student").replace(/\s+/g, "_")}_ACM_Card.png`,
+        content: Buffer.from(cleanBase64, "base64"),
+        cid: imageCid
+      });
+    }
+
+    const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #020612; color: #ffffff; padding: 20px; margin: 0; }
+    .card-container { max-width: 600px; margin: 0 auto; background: #050d24; border: 1px solid #00F0FF; border-radius: 20px; padding: 30px; }
+    .header { text-align: center; border-bottom: 1px solid #1e293b; padding-bottom: 20px; margin-bottom: 25px; }
+    .title { color: #00F0FF; font-size: 14px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; }
+    .student-name { font-size: 26px; font-weight: 900; color: #ffffff; margin: 8px 0; }
+    .persona-box { background: linear-gradient(135deg, #0d2260, #280b54); border: 1px solid #00F0FF; border-radius: 12px; padding: 15px; margin: 20px 0; text-align: center; }
+    .persona-title { font-size: 22px; font-weight: bold; color: #FFD700; }
+    .wing-box { background: #081538; border: 1px solid rgba(0,240,255,0.4); border-radius: 12px; padding: 16px; margin: 15px 0; }
+    .metrics { background: #030818; border-radius: 12px; padding: 15px; margin: 20px 0; }
+    .metric-row { display: flex; justify-content: space-between; margin: 8px 0; font-size: 14px; }
+    .footer { text-align: center; color: #64748b; font-size: 12px; margin-top: 30px; border-top: 1px solid #1e293b; padding-top: 15px; }
+  </style>
+</head>
+<body>
+  <div class="card-container">
+    <div class="header">
+      <div class="title">PEC ACM STUDENT CHAPTER</div>
+      <div class="student-name">Hey ${name || "PEC Student"}! 👋</div>
+      <p style="color: #94a3b8; font-size: 14px; margin: 0;">Here is your official PEC ACM Persona Card from the fresher quiz!</p>
+    </div>
+
+    <div class="persona-box">
+      <div style="color: #F59E0B; font-size: 11px; font-weight: bold; text-transform: uppercase;">👑 Official ACM Persona Title</div>
+      <div class="persona-title">"${personaTitle || "Full-Stack Phantom"}"</div>
+    </div>
+
+    <div class="wing-box">
+      <div style="color: #00F0FF; font-size: 12px; font-weight: bold;">🎯 RECOMMENDED WING: <span style="color: #ffffff; font-size: 16px;">${recommendedWing || "ACM-Dev"}</span></div>
+      <p style="color: #cbd5e1; font-size: 13px; margin: 8px 0 0 0;">${wingDescription || "Practical problem solver built for PEC Chandigarh tech ecosystem!"}</p>
+    </div>
+
+    <div class="metrics">
+      <div style="color: #94a3b8; font-size: 11px; font-weight: bold; margin-bottom: 10px;">📊 TECH APTITUDE BREAKDOWN:</div>
+      <div class="metric-row"><span style="color: #3b82f6;">• CP Logic:</span> <strong>${cpScore ?? 75}%</strong></div>
+      <div class="metric-row"><span style="color: #a855f7;">• Machine Learning:</span> <strong>${mlScore ?? 80}%</strong></div>
+      <div class="metric-row"><span style="color: #00F0FF;">• Software Dev:</span> <strong>${devScore ?? 85}%</strong></div>
+      <div class="metric-row"><span style="color: #10b981;">• Cybersecurity:</span> <strong>${cyberScore ?? 70}%</strong></div>
+    </div>
+
+    ${cardImageBase64 ? `
+    <div style="text-align: center; margin: 25px 0;">
+      <p style="color: #94a3b8; font-size: 12px; margin-bottom: 10px;">📸 Your High-Definition Persona Scorecard is attached below!</p>
+      <img src="cid:${imageCid}" alt="PEC ACM Persona Card" style="max-width: 100%; border-radius: 12px; border: 1px solid #00F0FF;" />
+    </div>` : ''}
+
+    <div class="footer">
+      <p>Sent with 💙 by <strong>PEC ACM Student Chapter</strong></p>
+      <p style="color: #475569;">Punjab Engineering College (PEC Chandigarh) • Session 2026-27</p>
+    </div>
+  </div>
+</body>
+</html>
+`;
+
+    if (!appPassword) {
+      console.warn("⚠️ GMAIL_APP_PASSWORD not set in environment. Email payload logged to console.");
+      console.log(`[Email to ${email}]: Persona Card for ${name} (${recommendedWing})`);
+      return res.json({
+        success: true,
+        notice: "Persona Card generated! (Add GMAIL_APP_PASSWORD in server/.env for direct inbox dispatch)",
+        recipient: email
+      });
+    }
+
+    await transporter.sendMail({
+      from: `"PEC ACM Student Chapter" <${senderEmail}>`,
+      to: email,
+      subject: `🎓 Your Official PEC ACM Persona Card! (${name || "Student"})`,
+      html: htmlContent,
+      attachments
+    });
+
+    res.json({ success: true, message: `Persona card sent to ${email}!` });
+  } catch (emailErr) {
+    console.error("Failed to send persona card email:", emailErr);
+    res.status(500).json({ success: false, error: "Failed to send email. Please verify server SMTP configuration." });
   }
 });
 

@@ -116,10 +116,11 @@ export default function Leaderboard() {
               onChange={(e) => setSelectedWing(e.target.value)}
               className="w-full px-4 py-2.5 bg-[#04091a] border border-blue-900/60 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-400 font-semibold"
             >
-              <option value="all">All Wings (ACM-Dev, AI, CP)</option>
+              <option value="all">All Wings (Dev, ML, CP, CyberSec)</option>
               <option value="ACM-Dev">ACM-Dev (Development)</option>
-              <option value="ACM-AI">ACM-AI (Artificial Intelligence)</option>
+              <option value="ACM-ML">ACM-ML (Machine Learning)</option>
               <option value="ACM-CP">ACM-CP (Competitive Coding)</option>
+              <option value="ACM-CyberSec">ACM-CyberSec (Cybersecurity)</option>
             </select>
           </div>
         </div>

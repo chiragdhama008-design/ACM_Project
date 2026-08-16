@@ -1,26 +1,32 @@
-// AI Dynamic Scenario Generator Engine for PEC ACM Student Chapter
-// Real-World Practical Scenarios for Freshers (Testing CP, AI/ML, and Dev Intuition)
+// PEC Chandigarh Fresher Quiz Scenarios for PEC ACM Student Chapter
+// Fun, Relatable & 100% PEC Chandigarh Specific (Short, Entertaining 2-3 Liners)
 
 export const SCENARIO_POOL_Q1 = [
-  // Real-Life Algorithmic Optimization, Queuing & Logistics (Testing CP & Dev Logic)
-  "Scenario 1 (Campus Logistics & Queue Optimization): During PEC's annual college fest or a 15-minute lecture break, 400+ students rush to the canteen and printing station simultaneously, causing massive bottlenecks. In your own words (no coding needed!), how would you break down and solve this real-life problem? Describe your step-by-step logic, priority system, or how you would eliminate waiting delays.",
-  
-  "Scenario 1 (Campus Transit & Route Efficiency): Every morning at 8:45 AM, hundreds of students are trying to reach lecture halls across campus (L-Block, Workshop, Library) with limited electric shuttles/autos. Without writing code, how would you design a smart routing and prioritization strategy to minimize average wait times and get maximum students to class on time?",
-  
-  "Scenario 1 (Hackathon Resource & Team Allocation): At a 500-student campus hackathon, participants need to quickly form teams with complementary skills, book lab equipment, and schedule mentor slots without timetable clashes. How would you design a fair, step-by-step logic or automated workflow to solve this matching challenge?",
-  
-  "Scenario 1 (Campus Lost & Found Recovery Workflow): Dozens of items (IDs, earphones, lab records, calculators) get misplaced across PEC campus weekly with no central tracking. How would you design an end-to-end practical solution or smart verification workflow to quickly match lost items to their owners while preventing false claims?"
+  "It's 7:56 AM, your 8 AM lecture is in L-Block / Workshop, and you just woke up in Kurukshetra/Himalaya hostel 🏃💨. How do you beat the 75% attendance rule and reach in 4 minutes flat?",
+
+  "The Nescafe & Student Centre lines during the 15-minute break are 50 students deep ☕🥪. How do you grab your cold coffee and patties before the next prof locks the door?",
+
+  "Your CTU bus gets stuck in Sector 12 traffic and your friend is holding your seat in the Lecture Hall 🚌. What's your big-brain rescue plan to save your attendance?",
+
+  "You have an urgent assignment printout due in 10 minutes at the PEC Market stationary shop, but 40 other freshers have the exact same idea 🖨️. How do you get yours first without chaos?",
+
+  "Someone in your hostel wing keeps borrowing your Maggi and chargers without asking 🕵️. How do you track them down and protect your midnight snacks with a clever trick?",
+
+  "It's PECFest night, your phone battery is at 3%, and your squad is scattered between Main Ground, Audi, and Nescafe 🎪. How do you reunite the squad without getting lost?"
 ];
 
 export const SCENARIO_POOL_Q2 = [
-  // Real-Life Intelligent Automation, Systems & Data Intelligence (Testing AI/ML & Dev Architecture)
-  "Scenario 2 (Smart Study & Exam Intelligence Tool): During mid-semester exams, students struggle with 100s of unstructured lecture slides, messy handwritten notes, and past exam papers. If you were to conceptualize a smart digital tool or intelligent assistant for campus students, how would it work? What intelligent features, data processing, or practical mechanisms would you include?",
-  
-  "Scenario 2 (Live Space & Resource Availability Monitor): Students often walk across campus to the central library or computer labs only to find zero vacant seats or occupied charging ports. How would you architect a smart automated monitoring solution (using sensors, mobile apps, or smart cameras) to display real-time availability without invading student privacy?",
-  
-  "Scenario 2 (Mess Food Freshness & Quality Assurance System): Hostel students frequently face inconsistent food quality, shortage of popular items, and food wastage. If you had to conceptualize an automated system or smart tracking tool to monitor daily food preparation, freshness, and student feedback transparently, how would you design it?",
-  
-  "Scenario 2 (Automated Campus Energy & Facility Manager): Many campus labs, project rooms, and lecture halls leave lights, ACs, and computer workstations powered on overnight. How would you build an automated, intelligent campus energy management system to detect occupancy and optimize power consumption without disrupting active experiments?"
+  "The hostel mess serves Lauki & watery dal for the 4th day in a row 🍛. You snap and decide to build a smart student app or tool. What does your invention do for PEC students?",
+
+  "You find a mysterious USB drive on the 2nd floor of PEC Central Library labeled 'TOP SECRET PEC QUIZ LEAKS' 🔐. What's your move?",
+
+  "You're given a magical permit to build ANY one tech project or automated gadget for PEC campus 🪄. What do you build and where does it go?",
+
+  "The AC in your CC (Computer Centre) lab is either freezing Siberia or off, and the WiFi is acting up ❄️📶. What smart hack or system would you create to fix lab life?",
+
+  "You and your friends want to book the best seats with charging ports in the Central Library during mid-sem week 📚. What's your strategy or tool to claim the spots?",
+
+  "A fellow fresher asks you: 'Bhai, which tech domain should I join in PEC ACM?' 🚀. You have 30 seconds to hype up your favorite wing. What's your pitch?"
 ];
 
 export function generateRandomScenarios() {
@@ -28,4 +34,3 @@ export function generateRandomScenarios() {
   const q2 = SCENARIO_POOL_Q2[Math.floor(Math.random() * SCENARIO_POOL_Q2.length)];
   return { q1, q2 };
 }
-

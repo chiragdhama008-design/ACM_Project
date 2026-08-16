@@ -4,8 +4,9 @@
  * Deterministic Backend Title Registry (Rule-based, NEVER AI Hallucinated)
  * Strictly assigned from the curated list:
  * - CP: The TLE Slayer, O(1) Brainiac, Codeforces Warlord, Binary Search Sorcerer, The Brute-Force Boss, Nested-Loop Legend, The Edge-Case Anarchist
- * - AI: The Overfitting Whisperer, Neural Network Alchemist, Prompt Engineering Monarch, The Gradient Descendant, Dataset Architect, Epoch Enthusiast, Hallucination Handler
+ * - ML: The Overfitting Whisperer, Neural Network Alchemist, Prompt Engineering Monarch, The Gradient Descendant, Dataset Architect, Epoch Enthusiast, Hallucination Handler
  * - Dev: Full-Stack Phantom, The Production Crasher, Git Merge Mastermind, Terminal Overlord, UI/UX Visionary, Scripting Ninja, The Coffee-to-Code Converter
+ * - CyberSec: The Firewall Phantom, SQL Injection Sensei, Bug Bounty Baron, The Ethical Hacker, Packet Sniffer Pro, CTF Gladiator, Script Kiddie Reborn
  */
 export const DETERMINISTIC_TITLES = {
   "ACM-CP": [
@@ -17,7 +18,7 @@ export const DETERMINISTIC_TITLES = {
     { minScore: 45, title: "Nested-Loop Legend", description: "Powers through heavy workloads one iterative loop at a time." },
     { minScore: 1,  title: "The Edge-Case Anarchist", description: "Finds bugs no one else thought of." }
   ],
-  "ACM-AI": [
+  "ACM-ML": [
     { minScore: 92, title: "The Overfitting Whisperer", description: "Trains models on pure intuition." },
     { minScore: 86, title: "Neural Network Alchemist", description: "Transmutes raw weights and activations into predictive intelligence." },
     { minScore: 80, title: "Prompt Engineering Monarch", description: "Commands foundation models and AI architectures with sovereign precision." },
@@ -34,6 +35,15 @@ export const DETERMINISTIC_TITLES = {
     { minScore: 60, title: "UI/UX Visionary", description: "Cares about how it feels before how it runs." },
     { minScore: 45, title: "Scripting Ninja", description: "Automates workflows and stitches microservices together with stealth." },
     { minScore: 1,  title: "The Coffee-to-Code Converter", description: "Fuels high-output development cycles with pure caffeine and ambition." }
+  ],
+  "ACM-CyberSec": [
+    { minScore: 92, title: "The Firewall Phantom", description: "No packet passes without their blessing." },
+    { minScore: 86, title: "SQL Injection Sensei", description: "Breaks into databases just to show you how to fix them." },
+    { minScore: 80, title: "Bug Bounty Baron", description: "Gets paid to find what others can't see." },
+    { minScore: 75, title: "The Ethical Hacker", description: "Hacks for good, codes for justice." },
+    { minScore: 60, title: "Packet Sniffer Pro", description: "Reads network traffic like a bedtime story." },
+    { minScore: 45, title: "CTF Gladiator", description: "Lives for the thrill of Capture The Flag challenges." },
+    { minScore: 1,  title: "Script Kiddie Reborn", description: "Started with scripts, now they write exploits from scratch." }
   ]
 };
 
@@ -54,13 +64,17 @@ export function getDeterministicTitle(wing, score, isAllGibberish = false, textC
     if (score < 85) {
       return { title: "The Edge-Case Anarchist", description: "Finds bugs no one else thought of." };
     }
-  } else if (wingKey === "ACM-AI" && (lowerText.includes("hallucinat") || lowerText.includes("creative") || lowerText.includes("generative") || lowerText.includes("wild"))) {
+  } else if (wingKey === "ACM-ML" && (lowerText.includes("hallucinat") || lowerText.includes("creative") || lowerText.includes("generative") || lowerText.includes("wild"))) {
     if (score < 85) {
       return { title: "Hallucination Handler", description: "Turns AI chaotic energy into working features." };
     }
   } else if (wingKey === "ACM-Dev" && (lowerText.includes("coffee") || lowerText.includes("night") || lowerText.includes("hack") || lowerText.includes("fast"))) {
     if (score < 85 && score >= 50) {
       return { title: "The Coffee-to-Code Converter", description: "Fuels high-output development cycles with pure caffeine and ambition." };
+    }
+  } else if (wingKey === "ACM-CyberSec" && (lowerText.includes("script") || lowerText.includes("beginner") || lowerText.includes("learn") || lowerText.includes("start"))) {
+    if (score < 85 && score >= 40) {
+      return { title: "Script Kiddie Reborn", description: "Started with scripts, now they write exploits from scratch." };
     }
   }
 
@@ -154,7 +168,7 @@ export function detectOffTopic(questionText, answerText) {
   // If answer discusses unrelated personal activities with zero logic
   const isCompletelyUnrelated = 
     (lowerAns.includes("movie") || lowerAns.includes("cricket") || lowerAns.includes("pubg") || lowerAns.includes("song")) &&
-    !lowerAns.includes("app") && !lowerAns.includes("system") && !lowerAns.includes("queue") && !lowerAns.includes("data");
+    !lowerAns.includes("app") && !lowerAns.includes("system") && !lowerAns.includes("queue") && !lowerAns.includes("data") && !lowerAns.includes("build");
 
   if (isCompletelyUnrelated) {
     return {
@@ -167,7 +181,7 @@ export function detectOffTopic(questionText, answerText) {
 }
 
 /**
- * Intelligent Question-by-Question Feedback Generator for Real-Life Scenarios
+ * Intelligent Question-by-Question Feedback Generator for Fun Fresher Scenarios
  */
 export function generateQuestionFeedback(questionText, answerText, questionNumber, wing) {
   const ans = (answerText || "").trim();
@@ -179,20 +193,20 @@ export function generateQuestionFeedback(questionText, answerText, questionNumbe
   if (gibberishCheck.isGibberish) {
     let idealDemo = "";
     if (questionNumber === 1) {
-      idealDemo = "A solid engineering breakdown: 1) Deploy a mobile pre-ordering token queue (FIFO / priority-based), 2) Split food counters into Express (pre-packaged) vs Prep (custom orders) to reduce queue wait time, 3) Display live digital queue estimates on a student portal.";
+      idealDemo = "A practical approach: Think about the problem step-by-step — what's the bottleneck? Then propose a simple solution like an app, a system, or just a clever life-hack. Even 'I'd make a WhatsApp group to coordinate' shows problem-solving!";
     } else {
-      idealDemo = "A viable intelligent architecture: 1) Edge IoT sensors or overhead PIR sensors measuring space/device occupancy, 2) Fast API microservice processing live state telemetry, 3) Real-time mobile dashboard giving students instant vacant desk recommendations without capturing personal camera footage.";
+      idealDemo = "A creative idea: Think about what bugs you about campus life, then imagine a cool tool or app that fixes it. For example: 'An app that shows live mess menu ratings' or 'A bot that reminds you about deadlines' — simple ideas count!";
     }
 
     return {
-      questionTitle: questionNumber === 1 ? "Scenario 1: Optimization & Workflow Strategy" : "Scenario 2: Intelligent Systems Architecture",
+      questionTitle: questionNumber === 1 ? "Question 1: Problem Solving" : "Question 2: Creative Thinking",
       questionText,
       userAnswer: ans || "(No answer provided)",
       status: "GIBBERISH",
-      focusBadge: "⚠️ No Score (0%): Filler / IDK Detected",
+      focusBadge: "⚠️ No Score (0%): No Real Answer",
       badgeStyle: "bg-red-950/60 border-red-500/40 text-red-300",
-      thoughtCorrectly: `❌ No technical score awarded (0%): You entered "${ans || 'blank text'}", which provides no structured logic or problem-solving attempt. In technical evaluations, answers must outline an approach to earn domain points.`,
-      betterWay: `💡 How an engineer solves this scenario: ${idealDemo}`
+      thoughtCorrectly: `❌ No score awarded: You entered "${ans || 'blank text'}", which doesn't show any problem-solving attempt. Even a simple idea like "I'd use an app" would earn you points!`,
+      betterWay: `💡 Here's what would've worked: ${idealDemo}`
     };
   }
 
@@ -200,47 +214,51 @@ export function generateQuestionFeedback(questionText, answerText, questionNumbe
   const offTopicCheck = detectOffTopic(questionText, ans);
   if (offTopicCheck.isOffTopic) {
     return {
-      questionTitle: questionNumber === 1 ? "Scenario 1: Optimization & Workflow Strategy" : "Scenario 2: Intelligent Systems Architecture",
+      questionTitle: questionNumber === 1 ? "Question 1: Problem Solving" : "Question 2: Creative Thinking",
       questionText,
       userAnswer: ans,
       status: "OFF_TOPIC",
-      focusBadge: "⚠️ Concept Mismatch (Off-Topic)",
+      focusBadge: "⚠️ Off-Topic Answer",
       badgeStyle: "bg-amber-950/60 border-amber-500/40 text-amber-300",
-      thoughtCorrectly: `⚠️ Concept mismatch (Low score awarded): Your answer "${ans}" does not address the core constraints and objectives of this technical scenario.`,
-      betterWay: `💡 Reframing into an engineering solution: Focus on the bottleneck (e.g. queue delays or resource shortages) and propose a clear, step-by-step logic, mobile tool, or sensor mechanism.`
+      thoughtCorrectly: `⚠️ Your answer "${ans}" is creative but doesn't quite address the question. No worries — it still shows personality!`,
+      betterWay: `💡 Try connecting your answer to the problem: What's the main issue? How would you fix it, even with a simple idea?`
     };
   }
 
-  // 3. LEGITIMATE ATTEMPT EVALUATION (Tailored to real-life technical thinking)
+  // 3. LEGITIMATE ATTEMPT EVALUATION (Fresher-friendly, generous scoring)
   if (questionNumber === 1) {
-    let focusBadge = "Algorithmic & Queuing Logic";
+    let focusBadge = "Practical Thinker";
     let thoughtCorrectly = "";
     let betterWay = "";
 
-    if (lowerAns.includes("token") || lowerAns.includes("queue") || lowerAns.includes("slot") || lowerAns.includes("fifo") || lowerAns.includes("priority") || lowerAns.includes("pre-order") || lowerAns.includes("qr")) {
-      focusBadge = "Queuing Theory & Load Balancing";
-      thoughtCorrectly = `You correctly identified the bottleneck as a concurrency / load problem and applied queuing or pre-ordering principles to distribute peak demand.`;
-      betterWay = `To elevate this to production grade: Implement a dynamic priority queue (e.g. prioritizing students with imminent classes) and separate pickup lines for hot food vs cold beverages to optimize throughput.`;
-    } else if (lowerAns.includes("app") || lowerAns.includes("qr code") || lowerAns.includes("website") || lowerAns.includes("portal") || lowerAns.includes("kiosk") || lowerAns.includes("notify") || lowerAns.includes("alert")) {
-      focusBadge = "Digital Systems Workflow";
-      thoughtCorrectly = `You recognized that manual handling is the main bottleneck and proposed digitizing order capture and status notifications.`;
-      betterWay = `Consider adding real-time push notifications when an order is 2 minutes away from completion, preventing counter overcrowding.`;
-    } else if (lowerAns.includes("route") || lowerAns.includes("shuttle") || lowerAns.includes("schedule") || lowerAns.includes("track") || lowerAns.includes("bus") || lowerAns.includes("gps")) {
-      focusBadge = "Transit Optimization & Routing";
-      thoughtCorrectly = `You analyzed transit delays as a resource allocation problem and focused on optimizing route frequency and student arrival timings.`;
-      betterWay = `Introduce live GPS telemetry and dynamic stop skipping during peak hours to prioritize high-congestion hubs like L-Block and Central Library.`;
-    } else if (lowerAns.includes("match") || lowerAns.includes("skill") || lowerAns.includes("filter") || lowerAns.includes("tag") || lowerAns.includes("mentor") || lowerAns.includes("database")) {
-      focusBadge = "Algorithmic Matchmaking";
-      thoughtCorrectly = `You structured team and mentor scheduling as a constraint satisfaction problem, matching complementary skill tags.`;
-      betterWay = `Incorporate an automated bipartite matching algorithm with time-slot intervals to guarantee zero double-booking for mentors.`;
+    if (lowerAns.includes("app") || lowerAns.includes("website") || lowerAns.includes("portal") || lowerAns.includes("build") || lowerAns.includes("code") || lowerAns.includes("system")) {
+      focusBadge = "Builder Mindset 🛠️";
+      thoughtCorrectly = `Nice! You immediately thought about building something to solve the problem — that's a Dev mindset. You see problems as opportunities to create tools.`;
+      betterWay = `To make it even cooler: Think about what data you'd need, who'd use it, and how it would look. Even a rough sketch of an idea shows strong thinking!`;
+    } else if (lowerAns.includes("plan") || lowerAns.includes("step") || lowerAns.includes("first") || lowerAns.includes("then") || lowerAns.includes("priority") || lowerAns.includes("order") || lowerAns.includes("queue") || lowerAns.includes("schedule")) {
+      focusBadge = "Strategic Planner 📋";
+      thoughtCorrectly = `Great structured thinking! You broke down the problem into steps or priorities — that's exactly how competitive programmers approach challenges.`;
+      betterWay = `Level up: Think about edge cases — what if your plan fails? Having a backup plan shows the kind of thinking that wins coding contests!`;
+    } else if (lowerAns.includes("hack") || lowerAns.includes("trick") || lowerAns.includes("shortcut") || lowerAns.includes("jugaad") || lowerAns.includes("cheat") || lowerAns.includes("bypass")) {
+      focusBadge = "Creative Hacker 🔓";
+      thoughtCorrectly = `Love the out-of-the-box thinking! Finding clever shortcuts and unconventional solutions is pure CyberSec energy.`;
+      betterWay = `Channel that energy: Think about whether your shortcut is ethical and sustainable. The best hackers find clever solutions that also follow the rules!`;
+    } else if (lowerAns.includes("data") || lowerAns.includes("pattern") || lowerAns.includes("predict") || lowerAns.includes("analyze") || lowerAns.includes("smart") || lowerAns.includes("ai") || lowerAns.includes("automat")) {
+      focusBadge = "Data Thinker 📊";
+      thoughtCorrectly = `You're thinking about data and patterns — that's the ML mindset! You see problems as data puzzles waiting to be solved.`;
+      betterWay = `Take it further: What kind of data would you collect? How would you use it to make predictions? Even simple ideas like 'track what works' show ML thinking!`;
+    } else if (lowerAns.includes("security") || lowerAns.includes("password") || lowerAns.includes("lock") || lowerAns.includes("protect") || lowerAns.includes("safe") || lowerAns.includes("encrypt") || lowerAns.includes("camera") || lowerAns.includes("catch")) {
+      focusBadge = "Security Mindset 🔐";
+      thoughtCorrectly = `You naturally think about security and protection — that's CyberSec DNA! Spotting vulnerabilities is a superpower.`;
+      betterWay = `Go deeper: Think about how someone might try to get around your solution. The best security comes from thinking like both the defender AND the attacker!`;
     } else {
-      focusBadge = "Pragmatic Problem Solving";
-      thoughtCorrectly = `You proposed "${ans}", taking direct aim at simplifying operational friction.`;
-      betterWay = `To refine this: Break your solution into 3 structured layers: Input ingestion (how data is captured), Processing logic (how priority/queues are handled), and Output dispatch (how users receive the result).`;
+      focusBadge = "Creative Thinker 💡";
+      thoughtCorrectly = `You came up with your own approach: "${ans.substring(0, 60)}..." — and that's what matters! Every good solution starts with a creative idea.`;
+      betterWay = `To strengthen your answer: Try explaining WHY your solution would work and what makes it better than just doing nothing. Structure = bonus points!`;
     }
 
     return {
-      questionTitle: "Scenario 1: Optimization & Workflow Strategy",
+      questionTitle: "Question 1: Problem Solving",
       questionText,
       userAnswer: ans,
       status: "VALID",
@@ -250,35 +268,39 @@ export function generateQuestionFeedback(questionText, answerText, questionNumbe
       betterWay
     };
   } else {
-    // SCENARIO 2
-    let focusBadge = "Smart Systems Architecture";
+    // QUESTION 2
+    let focusBadge = "Creative Mind";
     let thoughtCorrectly = "";
     let betterWay = "";
 
-    if (lowerAns.includes("ai") || lowerAns.includes("ocr") || lowerAns.includes("summarize") || lowerAns.includes("notes") || lowerAns.includes("slides") || lowerAns.includes("pyq") || lowerAns.includes("rag") || lowerAns.includes("bot") || lowerAns.includes("search")) {
-      focusBadge = "NLP & Knowledge Intelligence";
-      thoughtCorrectly = `You leveraged AI document processing and semantic search to convert unstructured academic materials into actionable study summaries.`;
-      betterWay = `To build a high-performance system: Use a RAG (Retrieval-Augmented Generation) pipeline with vector embeddings and an automated flashcard generator for rapid exam revision.`;
-    } else if (lowerAns.includes("sensor") || lowerAns.includes("camera") || lowerAns.includes("vision") || lowerAns.includes("seat") || lowerAns.includes("library") || lowerAns.includes("occupancy") || lowerAns.includes("iot") || lowerAns.includes("detect")) {
-      focusBadge = "Computer Vision & IoT Telemetry";
-      thoughtCorrectly = `You tackled the space availability challenge using automated presence detection without relying on tedious manual check-ins.`;
-      betterWay = `To protect privacy and minimize server costs: Run lightweight edge-AI object detection (like YOLO on Raspberry Pi/microcontroller) that sends only anonymized seat count numbers rather than raw video feeds.`;
-    } else if (lowerAns.includes("food") || lowerAns.includes("freshness") || lowerAns.includes("mess") || lowerAns.includes("quality") || lowerAns.includes("waste") || lowerAns.includes("feedback") || lowerAns.includes("rating")) {
-      focusBadge = "Automated Quality Assurance";
-      thoughtCorrectly = `You designed an automated feedback and monitoring pipeline to bring transparency to hostel operations and reduce waste.`;
-      betterWay = `Combine daily meal consumption forecasting using historical attendance data with an automated image-based food quality audit log.`;
-    } else if (lowerAns.includes("power") || lowerAns.includes("energy") || lowerAns.includes("light") || lowerAns.includes("ac") || lowerAns.includes("pir") || lowerAns.includes("schedule") || lowerAns.includes("timer")) {
-      focusBadge = "Smart Automation & Energy IoT";
-      thoughtCorrectly = `You recognized energy waste as an automation challenge and proposed sensor/schedule-driven power control.`;
-      betterWay = `Integrate an override safety switch for specialized lab equipment and use ambient light + motion multi-sensor triggers before toggling main power relays.`;
+    if (lowerAns.includes("app") || lowerAns.includes("website") || lowerAns.includes("build") || lowerAns.includes("tool") || lowerAns.includes("platform") || lowerAns.includes("code")) {
+      focusBadge = "App Builder 📱";
+      thoughtCorrectly = `You're a natural builder! Your instinct is to create something useful — apps, tools, platforms. That's pure Dev energy right there.`;
+      betterWay = `Make it real: What would the main screen look like? What's the ONE feature that makes people go 'woah'? Focus on that killer feature!`;
+    } else if (lowerAns.includes("ai") || lowerAns.includes("ml") || lowerAns.includes("model") || lowerAns.includes("predict") || lowerAns.includes("data") || lowerAns.includes("train") || lowerAns.includes("smart") || lowerAns.includes("bot") || lowerAns.includes("automat")) {
+      focusBadge = "ML Enthusiast 🧠";
+      thoughtCorrectly = `You're thinking in terms of intelligence and automation — that's Machine Learning at its core! Making machines smarter is literally what ML is about.`;
+      betterWay = `Think bigger: What data would you feed your model? How would it learn and improve over time? Even simple automation ideas show strong ML instincts!`;
+    } else if (lowerAns.includes("hack") || lowerAns.includes("security") || lowerAns.includes("encrypt") || lowerAns.includes("virus") || lowerAns.includes("password") || lowerAns.includes("firewall") || lowerAns.includes("protect") || lowerAns.includes("safe") || lowerAns.includes("usb") || lowerAns.includes("scan")) {
+      focusBadge = "Cyber Guardian 🛡️";
+      thoughtCorrectly = `Your security-first thinking is impressive! You naturally consider threats, protection, and digital safety — classic CyberSec mindset.`;
+      betterWay = `Go further: Think about how you'd DETECT problems, not just prevent them. The best security pros build systems that alert you before things go wrong!`;
+    } else if (lowerAns.includes("algorithm") || lowerAns.includes("logic") || lowerAns.includes("optimize") || lowerAns.includes("efficient") || lowerAns.includes("faster") || lowerAns.includes("sort") || lowerAns.includes("solve")) {
+      focusBadge = "Logic Master ⚡";
+      thoughtCorrectly = `You think in terms of efficiency and optimization — that's competitive programming DNA! Breaking down problems into logical steps is a superpower.`;
+      betterWay = `Challenge yourself: Can you make your solution even faster or handle more edge cases? That's what separates good coders from great ones!`;
+    } else if (lowerAns.includes("robot") || lowerAns.includes("hardware") || lowerAns.includes("sensor") || lowerAns.includes("iot") || lowerAns.includes("device") || lowerAns.includes("machine")) {
+      focusBadge = "Hardware Tinkerer 🤖";
+      thoughtCorrectly = `You're thinking beyond software — into the physical world! Building real devices and robots is incredibly cool and shows Dev + ML crossover thinking.`;
+      betterWay = `Level up: Think about how your device would communicate with a phone or dashboard. The magic happens when hardware meets software!`;
     } else {
-      focusBadge = "Applied Systems Engineering";
-      thoughtCorrectly = `You proposed "${ans}", identifying a practical automation need in campus systems.`;
-      betterWay = `Structure your solution with clear decoupled components: a lightweight frontend interface, a resilient API service, and a data persistence store with low latency.`;
+      focusBadge = "Original Thinker 🌟";
+      thoughtCorrectly = `Your unique perspective: "${ans.substring(0, 60)}..." shows independent thinking. You don't follow templates — you create your own solutions!`;
+      betterWay = `To make it stronger: Connect your idea to a real problem on campus. The best ideas solve something that genuinely bugs people!`;
     }
 
     return {
-      questionTitle: "Scenario 2: Intelligent Systems Architecture",
+      questionTitle: "Question 2: Creative Thinking",
       questionText,
       userAnswer: ans,
       status: "VALID",
@@ -291,7 +313,7 @@ export function generateQuestionFeedback(questionText, answerText, questionNumbe
 }
 
 /**
- * Main Persona Calculator with Strict 0-Score Enforcement for Gibberish/IDK
+ * Main Persona Calculator with 4 Wings: CP, ML, Dev, CyberSec
  */
 export function calculatePersona({ name, branch, answer1, answer2, scenario1, scenario2 }) {
   const text1 = (answer1 || "").trim();
@@ -318,15 +340,16 @@ export function calculatePersona({ name, branch, answer1, answer2, scenario1, sc
       recommendedWing: "ACM-Dev",
       wingDescription: titleObj.description,
       cpScore: 0,
-      aiScore: 0,
+      mlScore: 0,
       devScore: 0,
+      cyberScore: 0,
       hostelSurvival: 0,
       chaosIq: 0,
-      lockComment: "No valid problem-solving logic was entered for Scenario 1.",
-      robotComment: "No valid problem-solving logic was entered for Scenario 2.",
+      lockComment: "No valid problem-solving logic was entered for Question 1.",
+      robotComment: "No valid problem-solving logic was entered for Question 2.",
       feedbackQ1,
       feedbackQ2,
-      superpower: "Needs technical re-evaluation with concrete problem-solving input.",
+      superpower: "Needs re-evaluation with a real answer — even a short one counts!",
       timestamp: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     };
   }
@@ -335,37 +358,49 @@ export function calculatePersona({ name, branch, answer1, answer2, scenario1, sc
   const cpKeywords = [
     "algorithm", "logic", "queue", "priority", "fifo", "optimal", "optimize", "fast",
     "efficiency", "sorting", "binary", "tree", "matrix", "bottleneck", "edge case", "latency",
-    "speed", "shortcut", "step-by-step", "allocation", "schedule", "concurrency"
+    "speed", "shortcut", "step-by-step", "allocation", "schedule", "concurrency",
+    "plan", "order", "first", "then", "strategy", "rank"
   ];
 
-  const aiKeywords = [
+  const mlKeywords = [
     "ai", "ml", "machine learning", "model", "smart", "neural", "sensor", "detect",
     "vision", "camera", "predict", "nlp", "ocr", "summarize", "flashcard", "rag",
-    "data", "intelligence", "automated", "analytics", "classification", "yolo"
+    "data", "intelligence", "automated", "analytics", "classification", "yolo",
+    "bot", "recommend", "pattern", "train", "learn"
   ];
 
   const devKeywords = [
     "app", "web", "website", "portal", "system", "build", "frontend", "backend",
     "api", "database", "dashboard", "kiosk", "qr", "qr code", "iot", "hardware",
-    "microservice", "notification", "interface", "server", "architecture", "tool"
+    "microservice", "notification", "interface", "server", "architecture", "tool",
+    "code", "platform", "feature", "design", "ui", "ux", "mobile"
+  ];
+
+  const cyberKeywords = [
+    "security", "hack", "hacker", "encrypt", "decrypt", "password", "firewall",
+    "virus", "malware", "phishing", "vulnerability", "exploit", "ctf", "penetration",
+    "safe", "protect", "lock", "unlock", "privacy", "scan", "usb", "suspicious",
+    "catch", "spy", "trace", "forensic", "vpn", "proxy", "anonymous"
   ];
 
   let cpScore = g1.isGibberish ? 0 : 45;
-  let aiScore = g2.isGibberish ? 0 : 45;
+  let mlScore = g2.isGibberish ? 0 : 45;
   let devScore = (g1.isGibberish && g2.isGibberish) ? 0 : 45;
+  let cyberScore = (g1.isGibberish && g2.isGibberish) ? 0 : 40;
 
   if (!g1.isGibberish || !g2.isGibberish) {
     cpKeywords.forEach(k => { if (combined.includes(k)) cpScore += 10; });
-    aiKeywords.forEach(k => { if (combined.includes(k)) aiScore += 10; });
+    mlKeywords.forEach(k => { if (combined.includes(k)) mlScore += 10; });
     devKeywords.forEach(k => { if (combined.includes(k)) devScore += 10; });
+    cyberKeywords.forEach(k => { if (combined.includes(k)) cyberScore += 10; });
 
     // Word count / detail bonus for thoughtful freshers
     const wordCount = combined.split(/\s+/).filter(Boolean).length;
-    if (wordCount > 25) {
-      cpScore += 8; aiScore += 8; devScore += 8;
+    if (wordCount > 15) {
+      cpScore += 8; mlScore += 8; devScore += 8; cyberScore += 6;
     }
-    if (wordCount > 50) {
-      cpScore += 6; aiScore += 6; devScore += 6;
+    if (wordCount > 35) {
+      cpScore += 6; mlScore += 6; devScore += 6; cyberScore += 5;
     }
 
     // Branch aptitude baseline
@@ -373,7 +408,7 @@ export function calculatePersona({ name, branch, answer1, answer2, scenario1, sc
     if (bLower.includes("cse") || bLower.includes("computer")) {
       cpScore += 5; devScore += 5;
     } else if (bLower.includes("ai") || bLower.includes("data")) {
-      aiScore += 8;
+      mlScore += 8;
     } else if (bLower.includes("ece") || bLower.includes("ee") || bLower.includes("mech") || bLower.includes("bdes")) {
       devScore += 8;
     }
@@ -382,29 +417,35 @@ export function calculatePersona({ name, branch, answer1, answer2, scenario1, sc
     if (g1.isGibberish) {
       cpScore = 0;
       devScore = Math.floor(devScore * 0.5);
+      cyberScore = Math.floor(cyberScore * 0.5);
     }
     if (g2.isGibberish) {
-      aiScore = 0;
+      mlScore = 0;
       devScore = Math.floor(devScore * 0.5);
+      cyberScore = Math.floor(cyberScore * 0.5);
     }
     if (o1.isOffTopic) cpScore = Math.floor(cpScore * 0.4);
-    if (o2.isOffTopic) aiScore = Math.floor(aiScore * 0.4);
+    if (o2.isOffTopic) mlScore = Math.floor(mlScore * 0.4);
 
     cpScore = Math.min(98, Math.max(0, cpScore));
-    aiScore = Math.min(98, Math.max(0, aiScore));
+    mlScore = Math.min(98, Math.max(0, mlScore));
     devScore = Math.min(98, Math.max(0, devScore));
+    cyberScore = Math.min(98, Math.max(0, cyberScore));
   }
 
-  // Determine Dominant Wing
+  // Determine Dominant Wing (4-way comparison)
   let recommendedWing = "ACM-Dev";
   let maxScore = devScore;
 
-  if (cpScore >= aiScore && cpScore >= devScore) {
+  if (cpScore >= mlScore && cpScore >= devScore && cpScore >= cyberScore) {
     recommendedWing = "ACM-CP";
     maxScore = cpScore;
-  } else if (aiScore >= cpScore && aiScore >= devScore) {
-    recommendedWing = "ACM-AI";
-    maxScore = aiScore;
+  } else if (mlScore >= cpScore && mlScore >= devScore && mlScore >= cyberScore) {
+    recommendedWing = "ACM-ML";
+    maxScore = mlScore;
+  } else if (cyberScore >= cpScore && cyberScore >= mlScore && cyberScore >= devScore) {
+    recommendedWing = "ACM-CyberSec";
+    maxScore = cyberScore;
   } else {
     recommendedWing = "ACM-Dev";
     maxScore = devScore;
@@ -417,11 +458,11 @@ export function calculatePersona({ name, branch, answer1, answer2, scenario1, sc
   const feedbackQ2 = generateQuestionFeedback(scenario2, text2, 2, recommendedWing);
 
   // Quotes
-  let lockComment = `Scenario 1 logic: "${text1.substring(0, 50)}..."`;
-  let robotComment = `Scenario 2 architecture: "${text2.substring(0, 50)}..."`;
+  let lockComment = `Q1 vibe: "${text1.substring(0, 50)}..."`;
+  let robotComment = `Q2 vibe: "${text2.substring(0, 50)}..."`;
 
-  if (g1.isGibberish) lockComment = `Non-responsive input for Scenario 1 (0 marks awarded).`;
-  if (g2.isGibberish) robotComment = `Non-responsive input for Scenario 2 (0 marks awarded).`;
+  if (g1.isGibberish) lockComment = `No real answer for Question 1 — try again with even a short idea!`;
+  if (g2.isGibberish) robotComment = `No real answer for Question 2 — even one sentence counts!`;
 
   return {
     name: name || "PEC Student",
@@ -430,16 +471,16 @@ export function calculatePersona({ name, branch, answer1, answer2, scenario1, sc
     recommendedWing,
     wingDescription: titleObj.description,
     cpScore,
-    aiScore,
+    mlScore,
     devScore,
+    cyberScore,
     hostelSurvival: Math.min(99, Math.max(0, Math.floor((cpScore + devScore) / 2))),
-    chaosIq: Math.min(99, Math.max(0, Math.floor((aiScore + cpScore) / 2))),
+    chaosIq: Math.min(99, Math.max(0, Math.floor((mlScore + cyberScore) / 2))),
     lockComment,
     robotComment,
     feedbackQ1,
     feedbackQ2,
-    superpower: `Aptitude evaluated across Algorithmic Logic, Machine Intelligence & System Building.`,
+    superpower: `Your vibe has been analyzed across Logic, ML, Dev, and CyberSec!`,
     timestamp: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   };
 }
-

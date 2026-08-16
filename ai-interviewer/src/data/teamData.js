@@ -41,7 +41,7 @@ export const ACM_LEADS = [
     badgeColor: "bg-blue-900/40 border-blue-500/30 text-blue-300"
   },
   {
-    domain: "Machine Learning (ML / AI)",
+    domain: "Machine Learning (ML)",
     names: ["Abhipsit Bajpai", "Amisha Gupta", "Mithas Janbade"],
     icon: "Brain",
     badgeColor: "bg-purple-900/40 border-purple-500/30 text-purple-300"
@@ -51,6 +51,12 @@ export const ACM_LEADS = [
     names: ["Pranav Bhatia", "Kanavpreet Singh", "Ananyaa Priyadarshini"],
     icon: "Code",
     badgeColor: "bg-cyan-900/40 border-cyan-500/30 text-cyan-300"
+  },
+  {
+    domain: "Cybersecurity (CyberSec)",
+    names: ["Madhav"],
+    icon: "ShieldCheck",
+    badgeColor: "bg-emerald-900/40 border-emerald-500/30 text-emerald-300"
   },
   {
     domain: "Social Media & Branding",
@@ -81,11 +87,5 @@ export const ACM_LEADS = [
     names: ["Diya Bansal"],
     icon: "Sparkles",
     badgeColor: "bg-rose-900/40 border-rose-500/30 text-rose-300"
-  },
-  {
-    domain: "Cybersecurity",
-    names: ["Madhav"],
-    icon: "ShieldCheck",
-    badgeColor: "bg-emerald-900/40 border-emerald-500/30 text-emerald-300"
   }
 ];
