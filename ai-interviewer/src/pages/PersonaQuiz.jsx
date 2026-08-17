@@ -62,28 +62,12 @@ export default function PersonaQuiz() {
   const [answer1, setAnswer1] = useState("");
   const [answer2, setAnswer2] = useState("");
 
-  // Mic / Voice State
-  const [isListening, setIsListening] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
-  const [micNotice, setMicNotice] = useState("");
-  const [micBlocked, setMicBlocked] = useState(false);
-  const [audioLevel, setAudioLevel] = useState(0);
-
-  const recognitionRef = useRef(null);
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
-  const recordingActiveRef = useRef(false);
-  const audioContextRef = useRef(null);
-  const analyserRef = useRef(null);
-  const animFrameRef = useRef(null);
-  const mediaStreamRef = useRef(null);
-  const hasSavedRef = useRef(false);
-
   // Results & Email State
   const [personaResult, setPersonaResult] = useState(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
-  const [emailStatus, setEmailStatus] = useState(null); // { success: boolean, message: string }
+  const [emailStatus, setEmailStatus] = useState(null);
+  const hasSavedRef = useRef(false);
 
   // Branch Options
   const branches = [
@@ -98,24 +82,6 @@ export default function PersonaQuiz() {
     "Materials & Metallurgical (MME)",
     "Production & Industrial (PE)"
   ];
-
-  // Check microphone permissions on mount if browser supports Permissions API
-  useEffect(() => {
-    if (navigator.permissions && navigator.permissions.query) {
-      navigator.permissions.query({ name: "microphone" }).then((perm) => {
-        if (perm.state === "denied") {
-          setMicBlocked(true);
-        }
-        perm.onchange = () => {
-          if (perm.state === "granted") {
-            setMicBlocked(false);
-          } else if (perm.state === "denied") {
-            setMicBlocked(true);
-          }
-        };
-      }).catch(() => {});
-    }
-  }, []);
 
   // Generate scenarios on mount or retake
   useEffect(() => {
@@ -134,250 +100,16 @@ export default function PersonaQuiz() {
     }
   }, [step, scenarios]);
 
-  // Clean up audio & mic on unmount or step change
+  // Clean up audio on unmount
   useEffect(() => {
     return () => {
       audioEngine.stopSpeaking();
-      stopListening();
     };
   }, []);
-
-  // Stop mic when leaving questions
-  useEffect(() => {
-    if (step !== "q1" && step !== "q2") {
-      stopListening();
-    }
-  }, [step]);
-
-  // Helper to cleanup Web Audio Context
-  const cleanupAudioAnalyser = () => {
-    if (animFrameRef.current) {
-      cancelAnimationFrame(animFrameRef.current);
-      animFrameRef.current = null;
-    }
-    if (audioContextRef.current) {
-      try {
-        audioContextRef.current.close();
-      } catch (e) {}
-      audioContextRef.current = null;
-    }
-    setAudioLevel(0);
-  };
-
-  // SPEECH-TO-TEXT ENGINE
-  const startListening = async () => {
-    audioEngine.playClick();
-    audioEngine.stopSpeaking();
-    setMicBlocked(false);
-    setMicNotice("Listening... speak naturally!");
-    recordingActiveRef.current = true;
-    audioChunksRef.current = [];
-
-    // 1. Instant live speech preview via Web Speech API
-    try {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = navigator.language || "en-IN";
-
-        let currentSessionText = "";
-        recognition.onresult = (event) => {
-          let fullText = "";
-          for (let i = 0; i < event.results.length; i++) {
-            fullText += event.results[i][0].transcript + " ";
-          }
-          const cleanText = fullText.trim();
-          if (cleanText) {
-            currentSessionText = cleanText;
-            if (step === "q1") {
-              setAnswer1(cleanText);
-            } else if (step === "q2") {
-              setAnswer2(cleanText);
-            }
-          }
-        };
-
-        recognition.onerror = (e) => {
-          console.warn("Speech recognition event:", e.error);
-        };
-
-        recognition.start();
-        recognitionRef.current = recognition;
-      }
-    } catch (err) {
-      console.warn("Live SpeechRecognition notice:", err);
-    }
-
-    // 2. High-fidelity audio recording for server-side Whisper/Gemini transcription
-    try {
-      let stream = null;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true
-          }
-        });
-      } catch (strictErr) {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      }
-
-      mediaStreamRef.current = stream;
-      setIsListening(true);
-      setMicNotice("Listening... speak your idea clearly.");
-
-      try {
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        if (AudioContextClass) {
-          const audioCtx = new AudioContextClass();
-          audioContextRef.current = audioCtx;
-          const source = audioCtx.createMediaStreamSource(stream);
-          const analyser = audioCtx.createAnalyser();
-          analyser.fftSize = 256;
-          analyser.smoothingTimeConstant = 0.5;
-          source.connect(analyser);
-          analyserRef.current = analyser;
-
-          const dataArray = new Uint8Array(analyser.frequencyBinCount);
-          const updateVolume = () => {
-            if (!recordingActiveRef.current) return;
-            analyser.getByteFrequencyData(dataArray);
-            let sum = 0;
-            for (let i = 0; i < dataArray.length; i++) {
-              sum += dataArray[i];
-            }
-            const average = sum / dataArray.length;
-            const normalized = Math.min(100, Math.round((average / 128) * 100));
-            setAudioLevel(normalized);
-            animFrameRef.current = requestAnimationFrame(updateVolume);
-          };
-          updateVolume();
-        }
-      } catch (e) {}
-
-      const mimeTypes = [
-        "audio/webm;codecs=opus",
-        "audio/webm",
-        "audio/mp4",
-        "audio/aac",
-        "audio/ogg",
-        "audio/wav"
-      ];
-      let selectedMime = "";
-      for (const m of mimeTypes) {
-        if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) {
-          selectedMime = m;
-          break;
-        }
-      }
-
-      const recorderOptions = selectedMime ? { mimeType: selectedMime } : undefined;
-      const mediaRecorder = new MediaRecorder(stream, recorderOptions);
-      mediaRecorderRef.current = mediaRecorder;
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = async () => {
-        if (audioChunksRef.current.length > 0) {
-          const mime = selectedMime || audioChunksRef.current[0]?.type || "audio/webm";
-          const audioBlob = new Blob(audioChunksRef.current, { type: mime });
-          if (audioBlob.size > 150) {
-            setIsTranscribing(true);
-            setMicNotice("Processing voice to text...");
-
-            try {
-              const base64Audio = await new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
-                reader.readAsDataURL(audioBlob);
-              });
-
-              const res = await fetch(`${API_URL}/api/transcribe`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ audio: base64Audio })
-              });
-
-              if (res.ok) {
-                const data = await res.json();
-                if (data && data.text && data.text.trim()) {
-                  const whisperText = data.text.trim();
-                  if (step === "q1") {
-                    setAnswer1((prev) => (whisperText.length >= (prev?.length || 0) ? whisperText : prev || whisperText));
-                  } else if (step === "q2") {
-                    setAnswer2((prev) => (whisperText.length >= (prev?.length || 0) ? whisperText : prev || whisperText));
-                  }
-                }
-              }
-            } catch (err) {
-              console.warn("Audio transcription error:", err);
-            } finally {
-              setIsTranscribing(false);
-            }
-          }
-        }
-        setMicNotice("Voice captured! You can review or edit below.");
-      };
-
-      mediaRecorder.start(200);
-
-    } catch (micErr) {
-      recordingActiveRef.current = false;
-      setIsListening(false);
-      cleanupAudioAnalyser();
-
-      if (
-        micErr.name === "NotAllowedError" ||
-        micErr.name === "PermissionDeniedError" ||
-        micErr.name === "SecurityError"
-      ) {
-        setMicBlocked(true);
-        setMicNotice("Mic permission blocked by browser. Please enable mic access or type below.");
-      } else {
-        setMicNotice("Could not access mic. You can type your answer below.");
-      }
-    }
-  };
-
-  const stopListening = () => {
-    if (!recordingActiveRef.current && !isListening) return;
-    recordingActiveRef.current = false;
-    setIsListening(false);
-    cleanupAudioAnalyser();
-    audioEngine.playClick();
-
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {}
-      recognitionRef.current = null;
-    }
-
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-      try {
-        mediaRecorderRef.current.stop();
-      } catch (e) {}
-    }
-
-    if (mediaStreamRef.current) {
-      try {
-        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-      } catch (e) {}
-      mediaStreamRef.current = null;
-    }
-  };
 
   // Submit Answer & Move Next
   const handleNextStep = () => {
     audioEngine.playClick();
-    stopListening();
 
     if (step === "profile") {
       if (!name.trim()) {
@@ -752,64 +484,12 @@ export default function PersonaQuiz() {
               </p>
             </div>
 
-            {/* MIC CONTROLS */}
-            <div className="mb-5 p-4 rounded-2xl bg-[#061438] border border-cyan-500/30 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-                <button
-                  type="button"
-                  onClick={isListening ? stopListening : startListening}
-                  className={`px-5 py-3 rounded-full font-black text-sm flex items-center justify-center gap-2.5 transition-all shadow-lg cursor-pointer w-full sm:w-auto ${
-                    isListening
-                      ? "bg-red-600 hover:bg-red-700 text-white animate-pulse shadow-red-500/40"
-                      : "bg-gradient-to-r from-[#00F0FF] to-[#0075FF] text-slate-950 hover:scale-105 shadow-cyan-500/30"
-                  }`}
-                >
-                  {isListening ? (
-                    <>
-                      <MicOff size={18} />
-                      <span>Done Speaking</span>
-                    </>
-                  ) : (
-                    <>
-                      <Mic size={18} />
-                      <span>Tap to Speak</span>
-                    </>
-                  )}
-                </button>
-
-                {isListening && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-950/70 border border-red-500/50 text-red-300 text-xs font-bold">
-                    <span className="w-2 h-2 rounded-full bg-red-400 animate-ping"></span>
-                    <span>Listening:</span>
-                    <div className="flex items-end gap-1 h-4 px-1">
-                      <div className="w-1 bg-cyan-400 rounded-full transition-all duration-75" style={{ height: `${Math.max(4, Math.min(16, (audioLevel * 0.16)))}px` }}></div>
-                      <div className="w-1 bg-cyan-300 rounded-full transition-all duration-75" style={{ height: `${Math.max(6, Math.min(16, (audioLevel * 0.22)))}px` }}></div>
-                      <div className="w-1 bg-teal-300 rounded-full transition-all duration-75" style={{ height: `${Math.max(4, Math.min(16, (audioLevel * 0.28)))}px` }}></div>
-                      <div className="w-1 bg-cyan-400 rounded-full transition-all duration-75" style={{ height: `${Math.max(6, Math.min(16, (audioLevel * 0.20)))}px` }}></div>
-                      <div className="w-1 bg-cyan-200 rounded-full transition-all duration-75" style={{ height: `${Math.max(4, Math.min(16, (audioLevel * 0.14)))}px` }}></div>
-                    </div>
-                  </div>
-                )}
-
-                {isTranscribing && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-950/70 border border-cyan-400/50 text-cyan-300 text-xs font-bold animate-pulse">
-                    <RefreshCw size={14} className="animate-spin" />
-                    <span>Transcribing...</span>
-                  </div>
-                )}
-              </div>
-
-              <span className="text-xs text-blue-200/80 italic text-center sm:text-right">
-                {micNotice || "Speak your answer or type below — any short idea works!"}
-              </span>
-            </div>
-
             {/* Answer Textarea */}
             <div className="mb-6">
               <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
                 <span className="flex items-center gap-2 text-cyan-300">
                   <Keyboard size={15} />
-                  <span>Your Idea / Solution</span>
+                  <span>Type Your Idea / Solution</span>
                 </span>
                 <span className="text-[11px] text-cyan-400 font-mono">
                   {step === "q1" ? answer1.length : answer2.length} chars
@@ -818,7 +498,7 @@ export default function PersonaQuiz() {
 
               <textarea
                 rows={4}
-                placeholder="What's your move? Describe your quick plan or hack here (or use the Mic above)..."
+                placeholder="Type your idea, plan, or hack here..."
                 value={step === "q1" ? answer1 : answer2}
                 onChange={(e) => (step === "q1" ? setAnswer1(e.target.value) : setAnswer2(e.target.value))}
                 autoCorrect="off"

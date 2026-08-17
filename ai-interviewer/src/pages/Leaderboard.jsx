@@ -108,7 +108,7 @@ export default function Leaderboard() {
             onClick={() => audioEngine.playClick()}
             className="px-6 py-3 rounded-2xl bg-gradient-to-r from-[#0075FF] to-[#00F0FF] text-slate-950 font-black text-xs flex items-center justify-center gap-2 shadow-lg hover:scale-105 transition shrink-0 cursor-pointer"
           >
-            <Mic size={16} />
+            <Sparkles size={16} />
             <span>Generate My Persona</span>
           </Link>
         </div>
