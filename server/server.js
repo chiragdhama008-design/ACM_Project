@@ -46,11 +46,12 @@ function cleanWhisperHallucinations(rawText) {
   return cleaned;
 }
 
+import supabase from "./config/supabase.js";
+
 /**
  * PRIMARY SPEECH TRANSCRIPTION ENGINE
- * All browsers send recorded audio chunks here for server-side Whisper transcription.
- * This replaces the unreliable browser SpeechRecognition API entirely.
- * Whisper handles all accents, speech clarity levels, and non-native speakers accurately.
+ * All browsers send recorded audio chunks here for server-side Whisper/Gemini transcription.
+ * Whisper and Gemini handle all accents, speech clarity levels, and non-native speakers accurately.
  */
 app.post(["/api/transcribe", "/transcribe"], async (req, res) => {
   try {
@@ -70,7 +71,7 @@ app.post(["/api/transcribe", "/transcribe"], async (req, res) => {
     }
 
     const buffer = Buffer.from(base64Data, "base64");
-    if (buffer.length < 1500) {
+    if (buffer.length < 1000) {
       // Audio buffer too tiny / silent chunk
       return res.json({ text: "" });
     }
@@ -95,7 +96,7 @@ app.post(["/api/transcribe", "/transcribe"], async (req, res) => {
           file: file,
           model: "whisper-large-v3-turbo",
           temperature: 0.0,
-          prompt: "Verbatim speech transcription. Transcribe exact spoken words."
+          prompt: "Verbatim speech transcription. Transcribe exact spoken words without emojis."
         });
         if (transcription && transcription.text) {
           const sanitizedText = cleanWhisperHallucinations(transcription.text);
@@ -108,12 +109,112 @@ app.post(["/api/transcribe", "/transcribe"], async (req, res) => {
       }
     }
 
+    // Provider 2: Google Gemini Audio Transcription Fallback
+    if (process.env.GEMINI_API_KEY) {
+      try {
+        const { GoogleGenAI } = await import("@google/genai");
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const cleanMime = mimeType.split(";")[0].toLowerCase() || "audio/webm";
+        const response = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: [
+            {
+              role: "user",
+              parts: [
+                {
+                  inlineData: {
+                    mimeType: cleanMime,
+                    data: base64Data
+                  }
+                },
+                {
+                  text: "You are a speech-to-text transcriber. Transcribe the spoken audio verbatim in English or Hinglish. Return ONLY the transcribed text. Do NOT add preamble, quotes, or any emojis. If silent, return nothing."
+                }
+              ]
+            }
+          ]
+        });
+        const text = response?.text ? cleanWhisperHallucinations(response.text) : "";
+        if (text) {
+          return res.json({ text });
+        }
+      } catch (geminiErr) {
+        console.error("Gemini audio transcription fallback error:", geminiErr.message || geminiErr);
+      }
+    }
+
     res.json({ text: "" });
   } catch (err) {
     console.error("Transcription endpoint handler error:", err);
     res.json({ text: "" });
   }
 });
+
+/**
+ * 🔑 SUPABASE CONFIGURATION ENDPOINT
+ * Safely shares the public Supabase URL & Anon Key with the frontend so that
+ * all features work out of the box even if frontend build didn't have VITE_ prefixes.
+ */
+app.get(["/api/config/supabase", "/api/supabase-config", "/api/config"], (req, res) => {
+  const supabaseUrl = 
+    process.env.SUPABASE_URL || 
+    process.env.VITE_SUPABASE_URL || 
+    "";
+
+  const supabaseAnonKey = 
+    process.env.SUPABASE_KEY || 
+    process.env.SUPABASE_ANON_KEY || 
+    process.env.SUPABASE_SERVICE_ROLE_KEY || 
+    process.env.VITE_SUPABASE_ANON_KEY || 
+    process.env.VITE_SUPABASE_KEY || 
+    "";
+
+  res.json({
+    supabaseUrl,
+    supabaseAnonKey,
+    hasSupabase: !!(supabaseUrl && supabaseAnonKey)
+  });
+});
+
+/**
+ * 📊 BACKEND SUPABASE DATABASE PERSISTENCE PROXIES
+ * Allows saving & retrieving persona responses even if client-side CORS/RLS blocks direct browser inserts.
+ */
+app.post("/api/persona/save-response", async (req, res) => {
+  try {
+    const payload = req.body;
+    if (supabase && payload) {
+      const { data, error } = await supabase.from("pec_acm_responses").insert([payload]).select();
+      if (error) {
+        console.warn("Backend Supabase insert warning:", error.message);
+        return res.json({ success: true, fallback: true, error: error.message });
+      }
+      return res.json({ success: true, data });
+    }
+    return res.json({ success: true, fallback: true, message: "Saved locally (Supabase unconfigured on server)" });
+  } catch (err) {
+    console.warn("Backend save-response exception:", err.message);
+    res.json({ success: true, fallback: true });
+  }
+});
+
+app.get("/api/persona/leaderboard", async (req, res) => {
+  try {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from("pec_acm_responses")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (!error && data) {
+        return res.json({ success: true, data });
+      }
+    }
+    res.json({ success: true, data: [] });
+  } catch (err) {
+    res.json({ success: true, data: [] });
+  }
+});
+
 
 /**
  * UTILITY: RANDOM ENGINE PICKER

@@ -14,6 +14,7 @@ actually fit that field instead — do NOT default to big tech company tags
 for non-software domains. Assign the precise, most fitting company tag and
 write a 1-sentence real-world interview execution context explaining why it
 fits.
+Do NOT include any emojis anywhere in the questions, company tags, or context.
 
 Reply with ONLY a valid JSON array, no markdown fences, no commentary:
 [{"question": "...", "companyTag": "...", "realWorldContext": "..."}]`;

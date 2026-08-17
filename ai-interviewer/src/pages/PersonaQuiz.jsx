@@ -4,7 +4,7 @@ import CyberParticles from "../components/CyberParticles";
 import AcmLogo from "../components/AcmLogo";
 import AcmTeamSection from "../components/AcmTeamSection";
 import { calculatePersona } from "../utils/personaEngine";
-import { generateRandomScenarios } from "../utils/scenarioEngine";
+import { generateRandomScenarios, stripEmojis } from "../utils/scenarioEngine";
 import { triggerConfetti, downloadCardAsImage, generateCardDataUrl } from "../utils/canvasHelper";
 import { audioEngine } from "../utils/audioSynth";
 import { supabase } from "../supabaseClient";
@@ -168,18 +168,53 @@ export default function PersonaQuiz() {
     audioEngine.playClick();
     audioEngine.stopSpeaking();
     setMicBlocked(false);
-    setMicNotice("🎙️ Listening... speak naturally!");
+    setMicNotice("Listening... speak naturally!");
     recordingActiveRef.current = true;
     audioChunksRef.current = [];
 
-    let stream = null;
-
+    // 1. Instant live speech preview via Web Speech API
     try {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = navigator.language || "en-IN";
+
+        recognition.onresult = (event) => {
+          let fullText = "";
+          for (let i = 0; i < event.results.length; i++) {
+            fullText += event.results[i][0].transcript + " ";
+          }
+          const cleanText = fullText.trim();
+          if (cleanText) {
+            if (step === "q1") {
+              setAnswer1(cleanText);
+            } else if (step === "q2") {
+              setAnswer2(cleanText);
+            }
+          }
+        };
+
+        recognition.onerror = (e) => {
+          console.warn("Speech recognition event:", e.error);
+        };
+
+        recognition.start();
+        recognitionRef.current = recognition;
+      }
+    } catch (err) {
+      console.warn("Live SpeechRecognition notice:", err);
+    }
+
+    // 2. High-fidelity audio recording for server-side Whisper/Gemini transcription
+    try {
+      let stream = null;
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           audio: {
             echoCancellation: true,
-            noiseSuppression: false,
+            noiseSuppression: true,
             autoGainControl: true
           }
         });
@@ -189,7 +224,7 @@ export default function PersonaQuiz() {
 
       mediaStreamRef.current = stream;
       setIsListening(true);
-      setMicNotice("🎙️ Mic active! Speak your answer...");
+      setMicNotice("Mic active! Speak your answer...");
 
       try {
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -225,7 +260,8 @@ export default function PersonaQuiz() {
         "audio/webm",
         "audio/mp4",
         "audio/aac",
-        "audio/ogg"
+        "audio/ogg",
+        "audio/wav"
       ];
       let selectedMime = "";
       for (const m of mimeTypes) {
@@ -245,6 +281,48 @@ export default function PersonaQuiz() {
         }
       };
 
+      mediaRecorder.onstop = async () => {
+        if (audioChunksRef.current.length > 0) {
+          const mime = selectedMime || audioChunksRef.current[0]?.type || "audio/webm";
+          const audioBlob = new Blob(audioChunksRef.current, { type: mime });
+          if (audioBlob.size > 800) {
+            setIsTranscribing(true);
+            setMicNotice("Transcribing audio accurately...");
+
+            try {
+              const base64Audio = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.readAsDataURL(audioBlob);
+              });
+
+              const res = await fetch(`${API_URL}/api/transcribe`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ audio: base64Audio })
+              });
+
+              if (res.ok) {
+                const data = await res.json();
+                if (data && data.text && data.text.trim()) {
+                  const whisperText = data.text.trim();
+                  if (step === "q1") {
+                    setAnswer1((prev) => (whisperText.length >= prev.length ? whisperText : prev || whisperText));
+                  } else if (step === "q2") {
+                    setAnswer2((prev) => (whisperText.length >= prev.length ? whisperText : prev || whisperText));
+                  }
+                }
+              }
+            } catch (err) {
+              console.warn("Audio transcription error:", err);
+            } finally {
+              setIsTranscribing(false);
+            }
+          }
+        }
+        setMicNotice("Voice captured! You can refine or edit below.");
+      };
+
       mediaRecorder.start(250);
 
     } catch (micErr) {
@@ -258,50 +336,14 @@ export default function PersonaQuiz() {
         micErr.name === "SecurityError"
       ) {
         setMicBlocked(true);
-        setMicNotice("⚠️ Mic permission blocked by browser. Please enable mic access or type below.");
+        setMicNotice("Mic permission blocked by browser. Please enable mic access or type below.");
       } else {
-        setMicNotice("⚠️ Could not access mic. You can type your answer below.");
+        setMicNotice("Could not access mic. You can type your answer below.");
       }
-      return;
     }
-
-    try {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.maxAlternatives = 1;
-        recognition.lang = navigator.language || "en-IN";
-
-        recognition.onresult = (event) => {
-          let fullText = "";
-          for (let i = 0; i < event.results.length; i++) {
-            fullText += event.results[i][0].transcript + " ";
-          }
-          const cleanText = fullText.trim();
-          if (cleanText) {
-            if (step === "q1") {
-              setAnswer1(cleanText);
-            } else if (step === "q2") {
-              setAnswer2(cleanText);
-            }
-          }
-        };
-
-        recognition.onend = () => {
-          if (recordingActiveRef.current) {
-            try { recognition.start(); } catch (e) {}
-          }
-        };
-
-        recognition.start();
-        recognitionRef.current = recognition;
-      }
-    } catch (err) {}
   };
 
-  const stopListening = async () => {
+  const stopListening = () => {
     if (!recordingActiveRef.current && !isListening) return;
     recordingActiveRef.current = false;
     setIsListening(false);
@@ -311,8 +353,8 @@ export default function PersonaQuiz() {
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
-        recognitionRef.current = null;
       } catch (e) {}
+      recognitionRef.current = null;
     }
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
@@ -327,46 +369,6 @@ export default function PersonaQuiz() {
       } catch (e) {}
       mediaStreamRef.current = null;
     }
-
-    setTimeout(async () => {
-      if (audioChunksRef.current.length > 0) {
-        const audioBlob = new Blob(audioChunksRef.current, { type: audioChunksRef.current[0]?.type || "audio/webm" });
-        if (audioBlob.size > 1200) {
-          setIsTranscribing(true);
-          setMicNotice("⚡ Converting voice to text...");
-
-          try {
-            const base64Audio = await new Promise((resolve) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result);
-              reader.readAsDataURL(audioBlob);
-            });
-
-            const res = await fetch(`${API_URL}/api/transcribe`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ audio: base64Audio })
-            });
-
-            if (res.ok) {
-              const data = await res.json();
-              if (data && data.text && data.text.trim()) {
-                const whisperText = data.text.trim();
-                if (step === "q1") {
-                  setAnswer1((prev) => (whisperText.length > prev.length ? whisperText : prev || whisperText));
-                } else if (step === "q2") {
-                  setAnswer2((prev) => (whisperText.length > prev.length ? whisperText : prev || whisperText));
-                }
-              }
-            }
-          } catch (err) {
-          } finally {
-            setIsTranscribing(false);
-          }
-        }
-      }
-      setMicNotice("✓ Voice captured! You can refine or edit below.");
-    }, 400);
   };
 
   // Submit Answer & Move Next
@@ -478,7 +480,7 @@ export default function PersonaQuiz() {
   const saveResponseToDatabase = async (res) => {
     const payload = {
       name: res.name,
-      email: email,
+      email: email || "",
       branch: res.branch,
       answer1,
       answer2,
@@ -497,9 +499,23 @@ export default function PersonaQuiz() {
       localStorage.setItem("PEC_ACM_SUBMISSIONS", JSON.stringify(existing));
     } catch (e) {}
 
+    // 1. Direct Supabase insert
     try {
       await supabase.from("pec_acm_responses").insert([payload]);
-    } catch (err) {}
+    } catch (err) {
+      console.warn("Direct Supabase insert warning:", err);
+    }
+
+    // 2. Server backend fallback insert
+    try {
+      await fetch(`${API_URL}/api/persona/save-response`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+    } catch (err) {
+      console.warn("Backend save response error:", err);
+    }
   };
 
   // Send Persona Card via Email (server-side: sends TO the user)
@@ -672,8 +688,8 @@ export default function PersonaQuiz() {
                     onChange={(e) => setStudentType(e.target.value)}
                     className="w-full px-4 py-3.5 bg-[#030818] border border-blue-700/60 focus:border-cyan-400 rounded-2xl text-sm text-white focus:outline-none transition font-semibold"
                   >
-                    <option value="Day Scholar" className="bg-[#050c21]">🚌 Day Scholar</option>
-                    <option value="Hosteller" className="bg-[#050c21]">🏢 Hosteller</option>
+                    <option value="Day Scholar" className="bg-[#050c21]">Day Scholar</option>
+                    <option value="Hosteller" className="bg-[#050c21]">Hosteller</option>
                   </select>
                 </div>
               </div>
@@ -683,7 +699,7 @@ export default function PersonaQuiz() {
               onClick={handleNextStep}
               className="w-full py-4 rounded-full bg-gradient-to-r from-[#0075FF] to-[#00F0FF] hover:scale-[1.01] text-slate-950 font-black text-base flex items-center justify-center gap-3 shadow-lg shadow-cyan-500/25 transition cursor-pointer"
             >
-              <span>Let's Go! 🚀</span>
+              <span>Let's Go!</span>
               <ArrowRight size={20} />
             </button>
           </div>
@@ -714,11 +730,11 @@ export default function PersonaQuiz() {
               </span>
             </div>
 
-            {/* Question Box */}
+            {/* Question Box (100% Guaranteed No Emojis) */}
             <div className="bg-[#030818] border border-cyan-500/40 rounded-2xl p-5 mb-6 relative overflow-hidden shadow-lg shadow-cyan-500/10">
               <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-xl pointer-events-none"></div>
               <p className="text-base sm:text-lg font-bold text-cyan-100 leading-relaxed">
-                "{currentQuestionText}"
+                "{stripEmojis(currentQuestionText)}"
               </p>
             </div>
 
@@ -737,12 +753,12 @@ export default function PersonaQuiz() {
                   {isListening ? (
                     <>
                       <MicOff size={18} />
-                      <span>🛑 Done Speaking</span>
+                      <span>Done Speaking</span>
                     </>
                   ) : (
                     <>
                       <Mic size={18} />
-                      <span>🎤 Tap to Speak</span>
+                      <span>Tap to Speak</span>
                     </>
                   )}
                 </button>
@@ -763,14 +779,14 @@ export default function PersonaQuiz() {
 
                 {isTranscribing && (
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-950/70 border border-cyan-400/50 text-cyan-300 text-xs font-bold animate-pulse">
-                    <Loader2 size={14} className="animate-spin" />
+                    <RefreshCw size={14} className="animate-spin" />
                     <span>Transcribing...</span>
                   </div>
                 )}
               </div>
 
               <span className="text-xs text-blue-200/80 italic text-center sm:text-right">
-                {micNotice || "💡 Speak your answer or type below — any short idea works!"}
+                {micNotice || "Speak your answer or type below — any short idea works!"}
               </span>
             </div>
 
@@ -829,7 +845,7 @@ export default function PersonaQuiz() {
               onClick={handleNextStep}
               className="w-full py-4 rounded-full bg-gradient-to-r from-[#0075FF] to-[#00F0FF] hover:scale-[1.01] text-slate-950 font-black text-base flex items-center justify-center gap-3 shadow-lg shadow-cyan-500/25 transition cursor-pointer"
             >
-              <span>{step === "q1" ? "Next Question →" : "Show My Results! 🎉"}</span>
+              <span>{step === "q1" ? "Next Question" : "Show My Results"}</span>
               <ArrowRight size={20} />
             </button>
 

@@ -68,8 +68,7 @@ export default function WelcomeLanding() {
           >
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent transform -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
 
-            <Sparkles size={24} className="group-hover:rotate-12 transition-transform text-slate-950 shrink-0" />
-            <span className="tracking-tight">Find Your ACM Wing ✨</span>
+            <span className="tracking-tight">Find Your ACM Wing</span>
             <ArrowRight size={22} className="group-hover:translate-x-1.5 transition-transform shrink-0" />
           </Link>
         </div>
@@ -224,8 +223,8 @@ export default function WelcomeLanding() {
             onClick={handleLaunch}
             className="inline-flex items-center gap-3 px-9 py-4 rounded-full bg-gradient-to-r from-[#0075FF] to-[#00F0FF] text-slate-950 font-black text-lg shadow-xl hover:scale-105 transition-transform cursor-pointer"
           >
-            <Sparkles size={22} className="text-slate-950" />
-            <span>Take the Quiz ✨</span>
+            <span>Take the Quiz</span>
+            <ArrowRight size={20} />
           </Link>
         </div>
       </section>

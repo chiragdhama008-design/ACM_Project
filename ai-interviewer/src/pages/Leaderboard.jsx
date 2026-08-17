@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import CyberParticles from "../components/CyberParticles";
 import AcmLogo from "../components/AcmLogo";
 import { supabase } from "../supabaseClient";
+import { API_URL } from "../config/api.js";
 import { audioEngine } from "../utils/audioSynth";
 import {
   Trophy,
@@ -37,7 +38,7 @@ export default function Leaderboard() {
       localData = JSON.parse(localStorage.getItem("PEC_ACM_SUBMISSIONS") || "[]");
     } catch (e) {}
 
-    // Fetch from Supabase if active
+    // 1. Fetch directly from Supabase
     try {
       const { data, error } = await supabase
         .from("pec_acm_responses")
@@ -46,14 +47,31 @@ export default function Leaderboard() {
 
       if (!error && data && data.length > 0) {
         setSubmissions(data);
-      } else {
-        setSubmissions(localData);
+        setLoading(false);
+        return;
       }
     } catch (err) {
-      setSubmissions(localData);
-    } finally {
-      setLoading(false);
+      console.warn("Direct Supabase fetch fallback:", err);
     }
+
+    // 2. Fetch from backend /api/persona/leaderboard
+    try {
+      const res = await fetch(`${API_URL}/api/persona/leaderboard`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data && json.data.length > 0) {
+          setSubmissions(json.data);
+          setLoading(false);
+          return;
+        }
+      }
+    } catch (apiErr) {
+      console.warn("Backend leaderboard API fetch error:", apiErr);
+    }
+
+    // 3. LocalStorage fallback
+    setSubmissions(localData);
+    setLoading(false);
   };
 
   const filtered = submissions.filter((item) => {

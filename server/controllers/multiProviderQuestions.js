@@ -22,6 +22,7 @@ Siemens or ABB for electrical/mechatronics; L&T or DLF for civil; Pfizer or
 Moderna for biotech. Do NOT default to big tech company tags for non-software
 domains. Assign the most fitting real organization as the company tag, with
 a 1-sentence real-world context explaining why it fits.
+Do NOT include any emojis anywhere in the questions or responses.
 
 Reply with ONLY a valid JSON array, no markdown fences, no commentary:
 [{"question": "...", "companyTag": "...", "realWorldContext": "..."}]`;
@@ -40,6 +41,7 @@ example: ISRO, Boeing, Tesla, or GE for aerospace/mechanical; Pfizer or
 Moderna for biotech; Google or Amazon only if the resume is actually
 software-focused). Assign the most fitting real organization as the company
 tag, with a 1-sentence real-world context explaining why it fits.
+Do NOT include any emojis anywhere in the questions or responses.
 
 Resume Context:
 ${resumeText}
