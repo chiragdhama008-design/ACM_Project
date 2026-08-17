@@ -77,6 +77,7 @@ export default function PersonaQuiz() {
   const analyserRef = useRef(null);
   const animFrameRef = useRef(null);
   const mediaStreamRef = useRef(null);
+  const hasSavedRef = useRef(false);
 
   // Results & Email State
   const [personaResult, setPersonaResult] = useState(null);
@@ -181,6 +182,7 @@ export default function PersonaQuiz() {
         recognition.interimResults = true;
         recognition.lang = navigator.language || "en-IN";
 
+        let currentSessionText = "";
         recognition.onresult = (event) => {
           let fullText = "";
           for (let i = 0; i < event.results.length; i++) {
@@ -188,6 +190,7 @@ export default function PersonaQuiz() {
           }
           const cleanText = fullText.trim();
           if (cleanText) {
+            currentSessionText = cleanText;
             if (step === "q1") {
               setAnswer1(cleanText);
             } else if (step === "q2") {
@@ -224,7 +227,7 @@ export default function PersonaQuiz() {
 
       mediaStreamRef.current = stream;
       setIsListening(true);
-      setMicNotice("Mic active! Speak your answer...");
+      setMicNotice("Listening... speak your idea clearly.");
 
       try {
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -285,9 +288,9 @@ export default function PersonaQuiz() {
         if (audioChunksRef.current.length > 0) {
           const mime = selectedMime || audioChunksRef.current[0]?.type || "audio/webm";
           const audioBlob = new Blob(audioChunksRef.current, { type: mime });
-          if (audioBlob.size > 800) {
+          if (audioBlob.size > 150) {
             setIsTranscribing(true);
-            setMicNotice("Transcribing audio accurately...");
+            setMicNotice("Processing voice to text...");
 
             try {
               const base64Audio = await new Promise((resolve) => {
@@ -307,9 +310,9 @@ export default function PersonaQuiz() {
                 if (data && data.text && data.text.trim()) {
                   const whisperText = data.text.trim();
                   if (step === "q1") {
-                    setAnswer1((prev) => (whisperText.length >= prev.length ? whisperText : prev || whisperText));
+                    setAnswer1((prev) => (whisperText.length >= (prev?.length || 0) ? whisperText : prev || whisperText));
                   } else if (step === "q2") {
-                    setAnswer2((prev) => (whisperText.length >= prev.length ? whisperText : prev || whisperText));
+                    setAnswer2((prev) => (whisperText.length >= (prev?.length || 0) ? whisperText : prev || whisperText));
                   }
                 }
               }
@@ -320,10 +323,10 @@ export default function PersonaQuiz() {
             }
           }
         }
-        setMicNotice("Voice captured! You can refine or edit below.");
+        setMicNotice("Voice captured! You can review or edit below.");
       };
 
-      mediaRecorder.start(250);
+      mediaRecorder.start(200);
 
     } catch (micErr) {
       recordingActiveRef.current = false;
@@ -476,8 +479,11 @@ export default function PersonaQuiz() {
     }
   };
 
-  // Save Response to Database
+  // Save Response to Database (Strictly once per session)
   const saveResponseToDatabase = async (res) => {
+    if (hasSavedRef.current) return;
+    hasSavedRef.current = true;
+
     const payload = {
       name: res.name,
       email: email || "",
@@ -500,21 +506,29 @@ export default function PersonaQuiz() {
     } catch (e) {}
 
     // 1. Direct Supabase insert
+    let savedDirectly = false;
     try {
-      await supabase.from("pec_acm_responses").insert([payload]);
+      const { error } = await supabase.from("pec_acm_responses").insert([payload]);
+      if (!error) {
+        savedDirectly = true;
+      } else {
+        console.warn("Direct Supabase insert error:", error.message);
+      }
     } catch (err) {
       console.warn("Direct Supabase insert warning:", err);
     }
 
-    // 2. Server backend fallback insert
-    try {
-      await fetch(`${API_URL}/api/persona/save-response`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-    } catch (err) {
-      console.warn("Backend save response error:", err);
+    // 2. Server backend fallback insert ONLY if direct insert failed
+    if (!savedDirectly) {
+      try {
+        await fetch(`${API_URL}/api/persona/save-response`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+      } catch (err) {
+        console.warn("Backend save response error:", err);
+      }
     }
   };
 
@@ -1017,7 +1031,7 @@ export default function PersonaQuiz() {
                 ) : (
                   <>
                     <Mail size={18} />
-                    <span>Email My Persona Card 📧</span>
+                    <span>Email My Persona Card</span>
                   </>
                 )}
               </button>
@@ -1038,6 +1052,7 @@ export default function PersonaQuiz() {
               <button
                 onClick={() => {
                   audioEngine.playClick();
+                  hasSavedRef.current = false;
                   setScenarios(generateRandomScenarios());
                   setStep("profile");
                   setAnswer1("");

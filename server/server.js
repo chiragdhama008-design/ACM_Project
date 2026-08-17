@@ -71,72 +71,86 @@ app.post(["/api/transcribe", "/transcribe"], async (req, res) => {
     }
 
     const buffer = Buffer.from(base64Data, "base64");
-    if (buffer.length < 1000) {
+    if (buffer.length < 200) {
       // Audio buffer too tiny / silent chunk
       return res.json({ text: "" });
     }
+
+    const cleanMime = (mimeType.split(";")[0] || "audio/webm").toLowerCase();
+    let ext = "webm";
+    if (cleanMime.includes("mp4") || cleanMime.includes("m4a")) ext = "m4a";
+    else if (cleanMime.includes("aac")) ext = "aac";
+    else if (cleanMime.includes("wav")) ext = "wav";
+    else if (cleanMime.includes("ogg")) ext = "ogg";
 
     // Provider 1: Groq Whisper (whisper-large-v3-turbo) — fastest and most accurate
     if (process.env.GROQ_API_KEY) {
       try {
         const GroqModule = await import("groq-sdk");
         const Groq = GroqModule.default || GroqModule.Groq;
-        const toFile = GroqModule.toFile;
         const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-        const cleanMime = mimeType.split(";")[0].toLowerCase();
-        let ext = "webm";
-        if (cleanMime.includes("mp4") || cleanMime.includes("m4a")) ext = "mp4";
-        else if (cleanMime.includes("aac")) ext = "aac";
-        else if (cleanMime.includes("wav")) ext = "wav";
-        else if (cleanMime.includes("ogg")) ext = "ogg";
+        
+        let file;
+        if (typeof GroqModule.toFile === "function") {
+          file = await GroqModule.toFile(buffer, `speech.${ext}`, { type: cleanMime });
+        } else if (typeof File !== "undefined") {
+          file = new File([buffer], `speech.${ext}`, { type: cleanMime });
+        }
 
-        const file = await toFile(buffer, `speech.${ext}`, { type: cleanMime || "audio/webm" });
-
-        const transcription = await groq.audio.transcriptions.create({
-          file: file,
-          model: "whisper-large-v3-turbo",
-          temperature: 0.0,
-          prompt: "Verbatim speech transcription. Transcribe exact spoken words without emojis."
-        });
-        if (transcription && transcription.text) {
-          const sanitizedText = cleanWhisperHallucinations(transcription.text);
-          if (sanitizedText) {
-            return res.json({ text: sanitizedText });
+        if (file) {
+          const transcription = await groq.audio.transcriptions.create({
+            file: file,
+            model: "whisper-large-v3-turbo",
+            temperature: 0.0,
+            prompt: "Verbatim speech transcription. Transcribe exact spoken words without emojis."
+          });
+          if (transcription && transcription.text) {
+            const sanitizedText = cleanWhisperHallucinations(transcription.text);
+            if (sanitizedText) {
+              return res.json({ text: sanitizedText });
+            }
           }
         }
       } catch (groqErr) {
-        console.error("Groq Whisper transcription failed:", groqErr.message || groqErr);
+        console.warn("Groq Whisper transcription notice, trying fallback:", groqErr.message || groqErr);
       }
     }
 
-    // Provider 2: Google Gemini Audio Transcription Fallback
+    // Provider 2: Google Gemini Audio Transcription Fallback (gemini-2.0-flash / gemini-1.5-flash)
     if (process.env.GEMINI_API_KEY) {
       try {
         const { GoogleGenAI } = await import("@google/genai");
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        const cleanMime = mimeType.split(";")[0].toLowerCase() || "audio/webm";
-        const response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: [
-            {
-              role: "user",
-              parts: [
+        
+        const models = ["gemini-2.0-flash", "gemini-1.5-flash"];
+        for (const modelName of models) {
+          try {
+            const response = await ai.models.generateContent({
+              model: modelName,
+              contents: [
                 {
-                  inlineData: {
-                    mimeType: cleanMime,
-                    data: base64Data
-                  }
-                },
-                {
-                  text: "You are a speech-to-text transcriber. Transcribe the spoken audio verbatim in English or Hinglish. Return ONLY the transcribed text. Do NOT add preamble, quotes, or any emojis. If silent, return nothing."
+                  role: "user",
+                  parts: [
+                    {
+                      inlineData: {
+                        mimeType: cleanMime,
+                        data: base64Data
+                      }
+                    },
+                    {
+                      text: "Transcribe the spoken audio verbatim in English or Hinglish. Output ONLY the transcribed text. Do not add explanations, quotes, or emojis."
+                    }
+                  ]
                 }
               ]
+            });
+            const text = response?.text ? cleanWhisperHallucinations(response.text) : "";
+            if (text) {
+              return res.json({ text });
             }
-          ]
-        });
-        const text = response?.text ? cleanWhisperHallucinations(response.text) : "";
-        if (text) {
-          return res.json({ text });
+          } catch (mErr) {
+            console.warn(`Gemini model ${modelName} notice:`, mErr.message);
+          }
         }
       } catch (geminiErr) {
         console.error("Gemini audio transcription fallback error:", geminiErr.message || geminiErr);
